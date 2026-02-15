@@ -18,7 +18,7 @@ The objective is to:
 
 ---
 
-## � Download Datasets
+##  Download Datasets
 
 ### Raw Datasets (from Kaggle)
 
@@ -38,11 +38,11 @@ The following preprocessed datasets are available on Kaggle:
 - **master_h1b_full_dataset.csv** (~1.05 GB)
 - **rich_excel_dataset.csv** (~252 MB)
 
-Download from Kaggle and place in: `processed dataset/` folder
+Download from Assets section in this repo or you can run the code and generate of your own processed datasets and place in: `processed dataset/` folder
 
 ---
 
-## �📂 Input Datasets
+## 📂 Input Datasets
 
 Two raw datasets are used:
 
@@ -202,8 +202,6 @@ Will include:
 - Feature importance exploration
 
 ---
-
-## 👨‍💻 Author
 
 Vedant  
 B.Tech – Computer Science  
