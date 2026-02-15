@@ -203,9 +203,9 @@ Will include:
 
 ---
 
-Vedant Mehar
-B.Tech – Information Technology
-AI Enabled Visa Status Prediction Project
+Vedant Mehar || 
+B.Tech – Information Technology ||
+AI Enabled Visa Status Prediction Project ||
 Infosys Springboard Intern
 
 ---
