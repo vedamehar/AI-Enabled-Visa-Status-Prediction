@@ -203,8 +203,9 @@ Will include:
 
 ---
 
-Vedant  
-B.Tech – Computer Science  
+Vedant Mehar
+B.Tech – Information Technology
 AI Enabled Visa Status Prediction Project
+Infosys Springboard Intern
 
 ---
