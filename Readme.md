@@ -18,7 +18,31 @@ The objective is to:
 
 ---
 
-## 📂 Input Datasets
+## � Download Datasets
+
+### Raw Datasets (from Kaggle)
+
+1. **H-1B_Disclosure_Data_FY2018_EOY.xlsx**
+   - Download: https://www.kaggle.com/datasets/auygur/h1b-dataset-2017-2018
+   - Place in: `raw datasets/` folder
+
+2. **h1b_data.csv**
+   - Download: https://www.kaggle.com/datasets/thedevastator/h-1b-non-immigrant-labour-visa
+   - Place in: `raw datasets/` folder
+
+### Processed Datasets
+
+The following preprocessed datasets are available on Kaggle:
+
+- **baseline_model_dataset.csv** (~101 MB)
+- **master_h1b_full_dataset.csv** (~1.05 GB)
+- **rich_excel_dataset.csv** (~252 MB)
+
+Download from Kaggle and place in: `processed dataset/` folder
+
+---
+
+## �📂 Input Datasets
 
 Two raw datasets are used:
 
