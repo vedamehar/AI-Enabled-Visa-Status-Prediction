@@ -344,9 +344,9 @@ This ensures:
 
 ---
 
-# 👨‍💻 Author
+## 👨‍💻 Author  
 
-Vedant N. Mehar ||  
-B.Tech – Information Technology ||
-AI Enabled Visa Status Prediction Project ||
-Infosys Springboard Intern  (Batch - 13) Year 2026 
+**Vedant N. Mehar**  
+B.Tech – Information Technology  
+AI-Enabled Visa Status Prediction Project  
+Intern at Infosys Springboard (Batch 13, 2026)
