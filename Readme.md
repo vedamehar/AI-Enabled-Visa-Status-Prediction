@@ -291,11 +291,13 @@ EDA ensures data-driven feature selection.
 
 # 🤖 Module 3: Predictive Modeling
 
-Planned models:
+Implemented models:
 
 - Linear Regression
 - Random Forest Regressor
 - Gradient Boosting Regressor
+
+Training and model checkpoint generation are handled by `Modelling.py`. All trained artifacts and comparison outputs are stored in the `models/` directory.
 
 Evaluation Metrics:
 
@@ -305,6 +307,43 @@ Evaluation Metrics:
 
 Objective:
 Select best-performing model with optimal bias-variance tradeoff.
+
+---
+
+## 📊 Model Comparison Results
+
+| Model | MAE | RMSE | R² |
+| --- | ---: | ---: | ---: |
+| Linear Regression | 5.5609 | 24.3321 | 0.4732 |
+| Random Forest | 4.5179 | 22.5553 | 0.5473 |
+| Gradient Boosting | 4.7443 | 22.6361 | 0.5441 |
+
+The Random Forest model delivered the strongest baseline performance and was selected for hyperparameter tuning.
+
+---
+
+## 💾 Saved Model Artifacts
+
+- `models/Linear_Regression_model.pkl`
+- `models/Random_Forest_model.pkl`
+- `models/Gradient_Boosting_model.pkl`
+- `models/best_random_forest.pkl`
+- `models/visa_processing_model.pkl`
+- `models/model_results.csv`
+
+---
+
+## ✅ Saved Model Reload Verification
+
+The saved `best_random_forest.pkl` and `visa_processing_model.pkl` checkpoints were reloaded and evaluated on the original test split.
+
+Observed metrics for both checkpoints:
+
+- MAE: 4.475357245486147
+- RMSE: 22.296196258586367
+- R²: 0.5645273610449738
+
+This confirms that the final production checkpoint matches the tuned Random Forest model.
 
 ---
 
@@ -344,9 +383,19 @@ This ensures:
 
 ---
 
-## 👨‍💻 Author  
+# 🗂 Documentation
 
-**Vedant N. Mehar**  
-B.Tech – Information Technology  
-AI-Enabled Visa Status Prediction Project  
-Intern at Infosys Springboard (Batch 13, 2026)
+The `documentation/` folder contains supporting project documentation and planning artifacts.
+
+Current file included in the repository:
+
+- `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx`
+
+---
+
+# 👨‍💻 Author
+
+Vedant N. Mehar  
+B.Tech – Information Technology
+AI Enabled Visa Status Prediction & Processing Time Estimator
+Infosys Springboard Intern
