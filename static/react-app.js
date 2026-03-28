@@ -114,15 +114,6 @@ function PredictionContextVisualization({ formData, prediction, darkMode }) {
   const predictedMin = prediction?.prediction?.range_min ?? null;
   const predictedMax = prediction?.prediction?.range_max ?? null;
 
-  const fallbackRange =
-    predictedDays != null && predictedMin != null && predictedMax != null
-      ? Math.max(1, predictedMax - predictedMin)
-      : 1;
-  const fallbackOffset =
-    predictedDays != null && predictedMin != null && predictedMax != null
-      ? Math.max(0, Math.min(100, ((predictedDays - predictedMin) / fallbackRange) * 100))
-      : 50;
-
   React.useEffect(() => {
     if (!formData || !prediction) {
       setLoading(false);
@@ -169,31 +160,42 @@ function PredictionContextVisualization({ formData, prediction, darkMode }) {
   }
 
   if (error || !contextData) {
+    const confidenceSpan =
+      predictedMin != null && predictedMax != null ? Math.max(0, predictedMax - predictedMin) : null;
+
     return (
       <div className={`rounded-xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-4 transition-colors duration-300`}>
-        <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Prediction Visual Context</p>
+        <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Prediction Conclusions</p>
         <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>
           {error
-            ? "Historical dataset context is temporarily unavailable in this environment."
-            : "Historical context is not available for this selection yet."}
+            ? "Historical dataset context is unavailable in this environment. Showing model-based numeric conclusions."
+            : "Historical context is not available for this selection yet. Showing model-based numeric conclusions."}
         </p>
 
-        <div className={`mt-4 rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
-          <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Prediction Range (Live Result)</p>
-          <div className="mt-3">
-            <div className={`relative h-4 rounded-full ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
-              <div className="absolute left-0 top-0 h-4 w-full rounded-full bg-gradient-to-r from-cyan-400 via-cyan-500 to-orange-400" />
-              <div
-                className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border-4 border-white bg-slate-900 shadow-md"
-                style={{ left: `calc(${fallbackOffset}% - 12px)` }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between text-xs">
-              <span className={darkMode ? "text-slate-400" : "text-slate-600"}>Min: {predictedMin ?? 'N/A'}d</span>
-              <span className={darkMode ? "text-slate-400" : "text-slate-600"}>Pred: {predictedDays ?? 'N/A'}d</span>
-              <span className={darkMode ? "text-slate-400" : "text-slate-600"}>Max: {predictedMax ?? 'N/A'}d</span>
-            </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Predicted Days</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-cyan-400" : "text-cyan-700"}`}>{predictedDays ?? 'N/A'}</p>
           </div>
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Expected Window</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-purple-400" : "text-purple-700"}`}>
+              {predictedMin ?? 'N/A'}-{predictedMax ?? 'N/A'}d
+            </p>
+          </div>
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Confidence Span</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-orange-400" : "text-orange-700"}`}>{confidenceSpan ?? 'N/A'} days</p>
+          </div>
+        </div>
+
+        <div className={`mt-3 rounded-lg p-3 ${darkMode ? "bg-slate-700/30" : "bg-slate-50"} transition-colors duration-300`}>
+          <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Summary</p>
+          <ul className={`mt-2 space-y-1 text-sm ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+            <li>Estimated processing timeline: <strong>{predictedDays ?? 'N/A'} days</strong>.</li>
+            <li>Expected range for planning: <strong>{predictedMin ?? 'N/A'} to {predictedMax ?? 'N/A'} days</strong>.</li>
+            <li>Use this estimate with USCIS updates for final decision timelines.</li>
+          </ul>
         </div>
       </div>
     );
