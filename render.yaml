@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: visa-status-predictor
+    name: veda-visa-ai
     env: python
     plan: free
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: gunicorn app:app

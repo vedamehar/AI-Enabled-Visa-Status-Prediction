@@ -10,6 +10,7 @@ import numpy as np
 import os
 import json
 import math
+import sys
 from datetime import datetime
 
 # Initialize Flask app
@@ -28,6 +29,33 @@ app.json_encoder = NumpyEncoder
 # Load the trained models
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
 
+
+def safe_joblib_load(path, label=None, required=True):
+    """Load model artifacts with actionable diagnostics for deployment failures."""
+    artifact_name = label or os.path.basename(path)
+    try:
+        return joblib.load(path)
+    except Exception as exc:
+        sklearn_version = 'unknown'
+        try:
+            import sklearn  # Local import to avoid hard dependency at module parse time.
+            sklearn_version = sklearn.__version__
+        except Exception:
+            pass
+
+        error_message = (
+            f"Failed to load artifact '{artifact_name}' from '{path}'.\n"
+            f"Root error: {type(exc).__name__}: {exc}\n"
+            f"Environment versions -> numpy: {np.__version__}, joblib: {joblib.__version__}, "
+            f"scikit-learn: {sklearn_version}.\n"
+            "This usually indicates a serialization version mismatch. "
+            "Re-save artifacts with current environment using model_artifacts.py and redeploy."
+        )
+        print(error_message, file=sys.stderr)
+        if required:
+            raise RuntimeError(error_message) from exc
+        return None
+
 # Legacy models (fallback)
 TUNED_MODEL_PATH = os.path.join(MODELS_DIR, 'visa_processing_model_xgb_tuned.pkl')
 BASELINE_MODEL_PATH = os.path.join(MODELS_DIR, 'visa_processing_model.pkl')
@@ -43,9 +71,15 @@ use_new_models = os.path.exists(ENSEMBLE_MODEL_PATH) and os.path.exists(VISA_ENC
 
 if use_new_models:
     # Load new multi-visa models
-    ensemble_model = joblib.load(ENSEMBLE_MODEL_PATH)
-    visa_encoders = joblib.load(VISA_ENCODERS_PATH)
-    training_metadata = joblib.load(TRAINING_METADATA_PATH) if os.path.exists(TRAINING_METADATA_PATH) else {}
+    ensemble_model = safe_joblib_load(ENSEMBLE_MODEL_PATH, label='visa_ensemble_model')
+    visa_encoders = safe_joblib_load(VISA_ENCODERS_PATH, label='visa_encoders')
+    training_metadata = (
+        safe_joblib_load(TRAINING_METADATA_PATH, label='training_metadata', required=False)
+        if os.path.exists(TRAINING_METADATA_PATH)
+        else {}
+    )
+    if training_metadata is None:
+        training_metadata = {}
     
     # Load visa-specific models where available
     visa_specific_models = {}
@@ -53,7 +87,7 @@ if use_new_models:
         model_file = f"visa_model_{visa_type.replace(' ', '_').replace('-', '_')}.pkl"
         model_path = os.path.join(MODELS_DIR, model_file)
         if os.path.exists(model_path):
-            visa_specific_models[visa_type] = joblib.load(model_path)
+            visa_specific_models[visa_type] = safe_joblib_load(model_path, label=f'visa_model:{visa_type}')
     
     model = ensemble_model  # Default fallback
     is_tuned_xgb = False
@@ -69,12 +103,12 @@ else:
     else:
         raise FileNotFoundError('No trained model found in models directory.')
     
-    model = joblib.load(MODEL_PATH)
+    model = safe_joblib_load(MODEL_PATH, label='legacy_model')
     is_tuned_xgb = os.path.basename(MODEL_PATH) == 'visa_processing_model_xgb_tuned.pkl'
     
     case_status_encoder = None
     if is_tuned_xgb and os.path.exists(ENCODER_PATH):
-        case_status_encoder = joblib.load(ENCODER_PATH)
+        case_status_encoder = safe_joblib_load(ENCODER_PATH, label='case_status_encoder')
     
     visa_specific_models = {}
     visa_encoders = None
