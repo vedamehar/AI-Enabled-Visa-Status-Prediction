@@ -1,0 +1,1128 @@
+const { useEffect, useMemo, useState } = React;
+
+const monthOptions = [
+  { value: 1, label: "January" },
+  { value: 2, label: "February" },
+  { value: 3, label: "March" },
+  { value: 4, label: "April" },
+  { value: 5, label: "May" },
+  { value: 6, label: "June" },
+  { value: 7, label: "July" },
+  { value: 8, label: "August" },
+  { value: 9, label: "September" },
+  { value: 10, label: "October" },
+  { value: 11, label: "November" },
+  { value: 12, label: "December" },
+];
+
+const quarterOptions = [
+  { value: 1, label: "Q1 (Jan-Mar)" },
+  { value: 2, label: "Q2 (Apr-Jun)" },
+  { value: 3, label: "Q3 (Jul-Sep)" },
+  { value: 4, label: "Q4 (Oct-Dec)" },
+];
+
+const dayOptions = [
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
+];
+
+const caseStatusOptions = ["CERTIFIED", "DENIED", "WITHDRAWN", "PENDING_REVIEW"];
+
+const purposeOptions = [
+  { value: "", label: "Select purpose" },
+  { value: "work", label: "Work in the U.S." },
+  { value: "study", label: "Study in the U.S." },
+  { value: "visit", label: "Short visit / tourism / business visit" },
+  { value: "transfer", label: "Internal transfer from foreign office" },
+  { value: "extraordinary", label: "Extraordinary ability career path" },
+];
+
+const heroImageSrc = "/static/images/visa-hero.svg";
+const resultImageSrc = "/static/images/result-visual.svg";
+
+// FAQ Data
+const faqItems = [
+  {
+    question: "What is the H-1B visa?",
+    answer: "The H-1B is a temporary work visa for specialty occupations requiring a bachelor's degree or higher. Common fields include IT, engineering, finance, and consulting. Processing typically ranges from 2-8 months depending on the fiscal year and case specifics."
+  },
+  {
+    question: "How accurate are these predictions?",
+    answer: "Our model is trained on historical visa processing data and is strongest for H-1B cases (R² ~0.56). For other visa types, the prediction is directional and should be supplemented with official USCIS processing time estimates. Actual times vary based on case complexity and administrative workload."
+  },
+  {
+    question: "What does 'case status: CERTIFIED' mean?",
+    answer: "CERTIFIED means the Labor Condition Application (LCA) was approved. DENIED indicates LCA was rejected. WITHDRAWN means the case was voluntarily withdrawn. PENDING_REVIEW means the case is under initial review."
+  },
+  {
+    question: "Which visa type is easiest to get?",
+    answer: "No single visa is 'easiest'—it depends on your situation. B-1/B-2 is common for visits, F-1 for students with school admission, L-1 for internal transfers, and H-1B1 for nationals of Chile or Singapore. Consult an immigration attorney for personalized guidance."
+  },
+  {
+    question: "Can I apply for multiple visa types simultaneously?",
+    answer: "Policy varies. Generally, you can have multiple visa applications in process, but you must maintain status in one while waiting. Consult with your employer's immigration counsel before applying to multiple visa categories."
+  },
+  {
+    question: "What should I do after receiving my prediction?",
+    answer: "Use the prediction as a planning timeline, not a guarantee. Check USCIS official processing times, prepare your documents per the checklist, communicate with your employer/attorney, and monitor your case status via USCIS receipt numbers."
+  },
+  {
+    question: "Does the submission day of the week matter?",
+    answer: "Historically, submission timing can correlate with processing timelines due to governmental workload patterns. Our model incorporates day-of-week signals, but differences are typically small (a few days)."
+  },
+  {
+    question: "Where can I get official USCIS guidance?",
+    answer: "Visit www.uscis.gov for official guidance, visa category details, and current processing times. For personalized immigration advice, consult a qualified immigration attorney or accredited representative."
+  },
+];
+
+// Resources Data
+const resourcesList = [
+  { icon: "■", title: "USCIS.gov", description: "Official U.S. Citizenship & Immigration Services portal", url: "https://www.uscis.gov" },
+  { icon: "■", title: "USCIS Processing Times", description: "Real-time case processing time estimates by form type", url: "https://www.uscis.gov/field-offices" },
+  { icon: "■", title: "State Department Visas", description: "U.S. Department of State visa information and embassy contacts", url: "https://travel.state.gov/content/travel/en/us-visas.html" },
+  { icon: "■", title: "USCIS Call Center", description: "Call 1-800-375-5283 for official assistance", url: "https://www.uscis.gov/help/answer" },
+  { icon: "■", title: "Case Status Look-up", description: "Check your case status with your receipt number", url: "https://www.uscis.gov/case-status" },
+  { icon: "■", title: "Find Immigration Attorney", description: "American Immigration Lawyers Association directory", url: "https://www.aila.org" },
+];
+
+// Visa Comparison Data
+const visaComparisonData = [
+  { type: "H-1B", purpose: "Specialty Occupation Work", sponsorRequired: true, avgDays: "120-210", difficulty: "Medium" },
+  { type: "F-1", purpose: "Student", sponsorRequired: false, avgDays: "30-90", difficulty: "Low" },
+  { type: "L-1", purpose: "Intra-company Transfer", sponsorRequired: true, avgDays: "60-120", difficulty: "Medium" },
+  { type: "B-1/B-2", purpose: "Business/Tourism Visit", sponsorRequired: false, avgDays: "14-30", difficulty: "Low" },
+  { type: "O-1", purpose: "Extraordinary Ability", sponsorRequired: true, avgDays: "90-180", difficulty: "High" },
+  { type: "E-3", purpose: "Australian Specialty Worker", sponsorRequired: true, avgDays: "90-150", difficulty: "Medium" },
+  { type: "H-1B1 Singapore", purpose: "Singapore Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
+  { type: "H-1B1 Chile", purpose: "Chile Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
+];
+
+// Component for authentic data-driven predictions visualization
+function PredictionContextVisualization({ formData, prediction, darkMode }) {
+  const [contextData, setContextData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!formData || !prediction) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch authentic context data from backend
+    const fetchContext = async () => {
+      try {
+        const response = await fetch('/api/prediction-context', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            case_status: formData.case_status,
+            visa_type: formData.visa_type || 'H-1B',
+            submission_month: formData.submission_month,
+            case_year: formData.case_year
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch context');
+        const result = await response.json();
+        setContextData(result.context);
+      } catch (err) {
+        console.error('Context fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContext();
+  }, [formData, prediction]);
+
+  if (loading) {
+    return (
+      <div className={`rounded-xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-4 transition-colors duration-300`}>
+        <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Historical Context Analysis</p>
+        <div className="mt-4 flex items-center justify-center h-32">
+          <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading historical data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!contextData) return null;
+
+  const similar = contextData.similar_cases;
+  const monthlyTrend = contextData.monthly_trend;
+  const currentMonth = formData.submission_month ? parseInt(formData.submission_month) : null;
+  const monthTrendData = currentMonth && monthlyTrend ? monthlyTrend[currentMonth.toString()] : null;
+
+  return (
+    <div className={`rounded-xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-4 transition-colors duration-300`}>
+      <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Historical Context Analysis</p>
+      <p className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-400"} mt-1`}>Real data from {similar?.count?.toLocaleString() || 'N/A'} similar historical cases</p>
+      
+      {similar && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Historical Median</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-cyan-400" : "text-cyan-600"}`}>{similar.median.toFixed(0)} days</p>
+            <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>50th percentile</p>
+          </div>
+          
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Historical Mean</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-purple-400" : "text-purple-600"}`}>{similar.mean.toFixed(1)} days</p>
+            <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>Average processing</p>
+          </div>
+          
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>90th Percentile</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-orange-400" : "text-orange-600"}`}>{similar.percentile_90.toFixed(0)} days</p>
+            <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>Slower cases</p>
+          </div>
+          
+          <div className={`rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+            <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Range</p>
+            <p className={`text-2xl font-bold mt-1 ${darkMode ? "text-green-400" : "text-green-600"}`}>{similar.min.toFixed(0)}-{similar.max.toFixed(0)} days</p>
+            <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>Min to max</p>
+          </div>
+        </div>
+      )}
+
+      {monthTrendData && (
+        <div className={`mt-4 rounded-lg p-3 ${darkMode ? "bg-slate-700/50" : "bg-slate-100"} transition-colors duration-300`}>
+          <p className={`text-xs uppercase tracking-wide font-medium ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Your Submission Month (Month {currentMonth})</p>
+          <div className="mt-2 flex justify-between items-end h-16">
+            <div>
+              <p className={`text-sm font-semibold ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{monthTrendData.avg ? monthTrendData.avg.toFixed(1) : 'N/A'} days avg</p>
+              <p className={`text-xs ${darkMode ? "text-slate-500" : "text-slate-500"}`}>{monthTrendData.count} similar cases</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <p className={`text-xs mt-4 ${darkMode ? "text-slate-500" : "text-slate-500"}`}>
+        💡 <strong>Insight:</strong> Your prediction of <strong>{prediction?.prediction?.predicted_days}</strong> days is based on the model, contextualized with historical data from {similar?.count?.toLocaleString() || 'similar'} {formData.case_status} {formData.visa_type} cases. Historical median is <strong>{similar?.median}</strong> days.
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, icon = "", tone = "slate", children, darkMode = false }) {
+  const toneMap = {
+    light: {
+      slate: "from-slate-50 to-white border-slate-200/90",
+      cyan: "from-cyan-50/70 to-white border-cyan-200/70",
+      orange: "from-orange-50/70 to-white border-orange-200/70",
+      ink: "from-slate-100 to-white border-slate-300/80",
+      purple: "from-purple-50/70 to-white border-purple-200/70",
+      green: "from-green-50/70 to-white border-green-200/70",
+    },
+    dark: {
+      slate: "from-slate-800 to-slate-700/50 border-slate-700",
+      cyan: "from-slate-800 to-slate-800/50 border-slate-700",
+      orange: "from-slate-800 to-slate-800/50 border-slate-700",
+      ink: "from-slate-800 to-slate-700/50 border-slate-700",
+      purple: "from-slate-800 to-slate-800/50 border-slate-700",
+      green: "from-slate-800 to-slate-800/50 border-slate-700",
+    }
+  };
+
+  const toneClass = darkMode ? toneMap.dark[tone] || toneMap.dark.slate : toneMap.light[tone] || toneMap.light.slate;
+
+  return (
+    <section className={`rounded-2xl border bg-gradient-to-br p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${toneClass}`}>
+      <div className="mb-4 flex items-start gap-0">
+        <div>
+          <h2 className={`font-display text-2xl font-semibold ${darkMode ? "text-white" : "text-ink"}`}>{title}</h2>
+        </div>
+      </div>
+      <div>
+        {subtitle ? <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-600"}`}>{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Checklist({ items, emptyMessage, darkMode = false }) {
+  if (!items || items.length === 0) {
+    return <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{emptyMessage}</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item, idx) => (
+        <li key={`${item}-${idx}`} className={`flex items-start gap-2 text-base ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+          <span className="mt-1 inline-block h-2.5 w-2.5 rounded-full bg-lagoon" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// FAQ Accordion Component
+function FAQAccordion({ darkMode = false }) {
+  const [openIndex, setOpenIndex] = useState(0);
+
+  return (
+    <div className="space-y-2">
+      {faqItems.map((item, idx) => (
+        <div key={idx} className={`rounded-xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} transition-all duration-300 hover:shadow-sm`}>
+          <button
+            onClick={() => setOpenIndex(openIndex === idx ? -1 : idx)}
+            className={`w-full px-5 py-4 text-left flex items-center justify-between transition-colors ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-50"}`}
+          >
+            <span className={`font-semibold text-base ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{item.question}</span>
+            <span className={`text-xl transition-transform duration-300 ${openIndex === idx ? "rotate-180" : ""}`}>
+              ▼
+            </span>
+          </button>
+          {openIndex === idx && (
+            <div className={`border-t px-5 py-4 text-base animate-in fade-in duration-300 ${darkMode ? "border-slate-700 bg-slate-900 text-slate-300" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+              {item.answer}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Visa Comparison Matrix Component
+function VisaComparisonMatrix({ darkMode = false }) {
+  const [sortBy, setSortBy] = useState("type");
+
+  const sortedData = useMemo(() => {
+    const copy = [...visaComparisonData];
+    if (sortBy === "type") return copy.sort((a, b) => a.type.localeCompare(b.type));
+    if (sortBy === "days") return copy.sort((a, b) => parseInt(a.avgDays) - parseInt(b.avgDays));
+    if (sortBy === "difficulty") {
+      const diffMap = { Low: 1, Medium: 2, High: 3 };
+      return copy.sort((a, b) => diffMap[a.difficulty] - diffMap[b.difficulty]);
+    }
+    return copy;
+  }, [sortBy]);
+
+  const diffColor = (d) => {
+    if (d === "Low") return darkMode ? "bg-green-900/30 text-green-300" : "bg-green-50 text-green-900";
+    if (d === "Medium") return darkMode ? "bg-yellow-900/30 text-yellow-300" : "bg-yellow-50 text-yellow-900";
+    if (d === "High") return darkMode ? "bg-red-900/30 text-red-300" : "bg-red-50 text-red-900";
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setSortBy("type")}
+          className={`px-4 py-2.5 rounded-lg text-base font-medium transition ${
+            sortBy === "type" ? "bg-lagoon text-white" : darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Sort by Type
+        </button>
+        <button
+          onClick={() => setSortBy("days")}
+          className={`px-4 py-2.5 rounded-lg text-base font-medium transition ${
+            sortBy === "days" ? "bg-lagoon text-white" : darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Sort by Speed
+        </button>
+        <button
+          onClick={() => setSortBy("difficulty")}
+          className={`px-4 py-2.5 rounded-lg text-base font-medium transition ${
+            sortBy === "difficulty" ? "bg-lagoon text-white" : darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Sort by Difficulty
+        </button>
+      </div>
+
+      <div className={`overflow-x-auto rounded-xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+        <table className="w-full text-base">
+          <thead>
+            <tr className={`border-b-2 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-300 bg-slate-50"}`}>
+              <th className={`text-left py-3 px-4 font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Visa Type</th>
+              <th className={`text-left py-3 px-4 font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Purpose</th>
+              <th className={`text-left py-3 px-4 font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Sponsor</th>
+              <th className={`text-left py-3 px-4 font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Avg Days</th>
+              <th className={`text-left py-3 px-4 font-semibold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>Difficulty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedData.map((row, idx) => (
+              <tr key={idx} className={`border-b transition-colors ${darkMode ? "border-slate-700 hover:bg-slate-800" : "border-slate-200 hover:bg-slate-50"}`}>
+                <td className={`py-3 px-4 font-semibold ${darkMode ? "text-slate-100" : "text-ink"}`}>{row.type}</td>
+                <td className={`py-3 px-4 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>{row.purpose}</td>
+                <td className="py-3 px-4">
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${row.sponsorRequired ? (darkMode ? "bg-orange-900/30 text-orange-300" : "bg-orange-100 text-orange-800") : (darkMode ? "bg-green-900/30 text-green-300" : "bg-green-100 text-green-800")}`}>
+                    {row.sponsorRequired ? "Required" : "Not Required"}
+                  </span>
+                </td>
+                <td className={`py-3 px-4 font-medium ${darkMode ? "text-cyan-300" : "text-cyan-700"}`}>{row.avgDays}</td>
+                <td className="py-3 px-4">
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${diffColor(row.difficulty)}`}>
+                    {row.difficulty}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Statistics Dashboard Component
+function StatisticsDashboard({ darkMode = false }) {
+  const nonH1BPlotItems = [
+    { title: "Non-H1B Median Processing by Visa Class", src: "/static/images/plots/07_non_h1b_median_processing.png" },
+    { title: "All Visa Classes Avg Processing (Top by Volume)", src: "/static/images/plots/08_all_visas_avg_processing.png" },
+    { title: "Non-H1B Case Status Mix", src: "/static/images/plots/09_non_h1b_case_status_mix.png" },
+  ];
+
+  const h1bExclusivePlotItems = [
+    { title: "H-1B Monthly Trend (Exclusive)", src: "/static/images/plots/10_h1b_monthly_trend_exclusive.png" },
+    { title: "H-1B Wage vs Processing (Exclusive)", src: "/static/images/plots/11_h1b_wage_vs_processing_exclusive.png" },
+    { title: "H-1B State Processing (Exclusive)", src: "/static/images/plots/12_h1b_state_processing_exclusive.png" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={`rounded-xl border p-5 ${darkMode ? "border-cyan-900/50 bg-gradient-to-br from-cyan-900/25 to-blue-900/20" : "border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50"}`}>
+          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-cyan-300" : "text-cyan-700"}`}>Avg Processing Time</p>
+          <p className="text-3xl font-bold text-cyan-900 mt-2">120 days</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-cyan-200" : "text-cyan-700"}`}>H-1B baseline average</p>
+        </div>
+        
+        <div className={`rounded-xl border p-5 ${darkMode ? "border-orange-900/50 bg-gradient-to-br from-orange-900/25 to-red-900/20" : "border-orange-200 bg-gradient-to-br from-orange-50 to-red-50"}`}>
+          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-orange-300" : "text-orange-700"}`}>Fastest Visa Type</p>
+          <p className="text-3xl font-bold text-orange-900 mt-2">B-1/B-2</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-orange-200" : "text-orange-700"}`}>14-30 days typical range</p>
+        </div>
+        
+        <div className={`rounded-xl border p-5 ${darkMode ? "border-green-900/50 bg-gradient-to-br from-green-900/25 to-emerald-900/20" : "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"}`}>
+          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-green-300" : "text-green-700"}`}>Most Common</p>
+          <p className="text-3xl font-bold text-green-900 mt-2">H-1B</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-green-200" : "text-green-700"}`}>~70% of specialty visa filings</p>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-5 space-y-4 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
+        <h3 className={`font-semibold text-lg ${darkMode ? "text-slate-100" : "text-slate-800"}`}>Processing Time Ranges by Category</h3>
+        
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>120-210 days</span>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full w-3/4 bg-gradient-to-r from-lagoon to-cyan-400 rounded-full"></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>O-1 (Extraordinary)</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>90-180 days</span>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full w-2/3 bg-gradient-to-r from-sunrise to-orange-400 rounded-full"></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>L-1 (Transfer)</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>60-120 days</span>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full w-1/2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>F-1 (Student)</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>30-90 days</span>
+            </div>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-5 ${darkMode ? "border-slate-700 bg-slate-900" : "border-blue-200 bg-blue-50"}`}>
+        <p className={`text-base ${darkMode ? "text-slate-200" : "text-blue-900"}`}>
+          <strong>Insight:</strong> Processing times are influenced by fiscal year, case complexity, background checks, and administrative workload. Times shown are historical averages and can vary significantly.
+        </p>
+      </div>
+
+      <div className={`rounded-xl border p-5 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
+        <h3 className={`mb-4 font-semibold text-lg ${darkMode ? "text-slate-100" : "text-slate-800"}`}>Non-H1B + Multi-Visa Visuals (Matplotlib)</h3>
+        <p className={`mb-4 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+          Charts generated via matplotlib using non-H1B and cross-visa records.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          {nonH1BPlotItems.map((plot) => (
+            <div key={plot.src} className={`overflow-hidden rounded-xl border ${darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-50"}`}>
+              <img src={plot.src} alt={plot.title} className="w-full object-cover" loading="lazy" />
+              <div className="px-4 py-3">
+                <p className={`text-base font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>{plot.title}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-5 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
+        <h3 className={`mb-4 font-semibold text-lg ${darkMode ? "text-slate-100" : "text-slate-800"}`}>H-1B Exclusive Visuals (Matplotlib)</h3>
+        <p className={`mb-4 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+          Dedicated H-1B analytics charts generated separately from the broader visa set.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          {h1bExclusivePlotItems.map((plot) => (
+            <div key={plot.src} className={`overflow-hidden rounded-xl border ${darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-50"}`}>
+              <img src={plot.src} alt={plot.title} className="w-full object-cover" loading="lazy" />
+              <div className="px-4 py-3">
+                <p className={`text-base font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>{plot.title}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Resources Hub Component
+function ResourcesHub({ darkMode = false }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {resourcesList.map((resource, idx) => (
+          <a
+            key={idx}
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`rounded-xl border p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 block group border-t-4 border-t-lagoon ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}
+          >
+            <p className={`font-semibold text-lg transition-colors group-hover:text-lagoon ${darkMode ? "text-slate-100" : "text-ink"}`}>{resource.title}</p>
+            <p className={`text-base mt-1 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{resource.description}</p>
+            <p className="text-sm text-lagoon font-medium mt-3 flex items-center gap-1">
+              Visit Resource →
+            </p>
+          </a>
+        ))}
+      </div>
+
+      <div className={`rounded-xl border-2 border-dashed p-5 text-center ${darkMode ? "border-slate-600 bg-slate-900" : "border-slate-300 bg-slate-50"}`}>
+        <p className={`text-base ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+          <strong>Important:</strong> This tool provides estimates for planning purposes only. For binding legal advice and immigration assistance, consult a qualified immigration attorney licensed in the United States.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function buildRecommendation(profile, availableTypes) {
+  const scores = {};
+  availableTypes.forEach((item) => {
+    scores[item.visa_type] = 0;
+  });
+
+  const hasType = (type) => Object.prototype.hasOwnProperty.call(scores, type);
+  const add = (type, value) => {
+    if (hasType(type)) {
+      scores[type] += value;
+    }
+  };
+
+  if (profile.purpose === "study") {
+    add("F-1", 9);
+  }
+  if (profile.purpose === "visit") {
+    add("B-1/B-2", 9);
+  }
+  if (profile.purpose === "work") {
+    add("H-1B", 7);
+    add("O-1", 4);
+  }
+  if (profile.purpose === "transfer") {
+    add("L-1", 9);
+  }
+  if (profile.purpose === "extraordinary") {
+    add("O-1", 10);
+    add("H-1B", 2);
+  }
+
+  if (profile.hasSponsor === "yes") {
+    add("H-1B", 3);
+    add("L-1", 2);
+    add("O-1", 2);
+  }
+  if (profile.hasSponsor === "no") {
+    add("B-1/B-2", 2);
+    add("F-1", 2);
+  }
+
+  if (profile.internalTransfer === "yes") {
+    add("L-1", 6);
+  }
+
+  if (profile.hasSchoolAdmission === "yes") {
+    add("F-1", 5);
+  }
+
+  const ranking = Object.entries(scores)
+    .sort((a, b) => b[1] - a[1])
+    .map(([visaType, score]) => ({ visaType, score }))
+    .filter((item) => item.score > 0);
+
+  return ranking;
+}
+
+function App() {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(() => {
+    const years = [];
+    for (let year = currentYear; year >= 2015; year -= 1) {
+      years.push(year);
+    }
+    return years;
+  }, [currentYear]);
+
+  const [tab, setTab] = useState("predictor");
+  const [darkMode, setDarkMode] = useState(false);
+
+  const [visaTypes, setVisaTypes] = useState([]);
+  const [selectedVisaType, setSelectedVisaType] = useState("H-1B");
+  const [guidance, setGuidance] = useState(null);
+
+  const [formData, setFormData] = useState({
+    case_status: "",
+    submission_month: "",
+    submission_quarter: "",
+    submission_dayofweek: "",
+    case_year: "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [isLoadingTypes, setIsLoadingTypes] = useState(true);
+  const [isLoadingGuidance, setIsLoadingGuidance] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prediction, setPrediction] = useState(null);
+  const [profile, setProfile] = useState({
+    purpose: "",
+    hasSponsor: "",
+    internalTransfer: "",
+    hasSchoolAdmission: "",
+  });
+  const [recommendations, setRecommendations] = useState([]);
+
+  useEffect(() => {
+    async function loadVisaTypes() {
+      try {
+        const response = await fetch("/api/visa-types");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to load visa types");
+        }
+
+        const types = data.visa_types || [];
+        setVisaTypes(types);
+
+        if (types.length > 0) {
+          const hasH1B = types.some((t) => t.visa_type === "H-1B");
+          setSelectedVisaType(hasH1B ? "H-1B" : types[0].visa_type);
+        }
+      } catch (err) {
+        setApiError(err.message || "Unable to load visa types");
+      } finally {
+        setIsLoadingTypes(false);
+      }
+    }
+
+    loadVisaTypes();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedVisaType) {
+      return;
+    }
+
+    async function loadGuidance() {
+      setIsLoadingGuidance(true);
+      setApiError("");
+      try {
+        const response = await fetch(`/api/visa-guidance?visa_type=${encodeURIComponent(selectedVisaType)}`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to load guidance");
+        }
+        setGuidance(data);
+      } catch (err) {
+        setApiError(err.message || "Unable to load guidance");
+      } finally {
+        setIsLoadingGuidance(false);
+      }
+    }
+
+    loadGuidance();
+  }, [selectedVisaType]);
+
+  function updateField(name, value) {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setApiError("");
+  }
+
+  function validateForm() {
+    const nextErrors = {};
+    Object.keys(formData).forEach((key) => {
+      if (!String(formData[key]).trim()) {
+        nextErrors[key] = "This field is required";
+      }
+    });
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function runRecommendation() {
+    const ranking = buildRecommendation(profile, visaTypes);
+    setRecommendations(ranking);
+    if (ranking.length > 0) {
+      setSelectedVisaType(ranking[0].visaType);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setApiError("");
+    setPrediction(null);
+
+    try {
+      const payload = {
+        visa_type: selectedVisaType,
+        case_status: formData.case_status,
+        submission_month: Number(formData.submission_month),
+        submission_quarter: Number(formData.submission_quarter),
+        submission_dayofweek: Number(formData.submission_dayofweek),
+        case_year: Number(formData.case_year),
+      };
+
+      const response = await fetch("/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Prediction failed");
+      }
+
+      setPrediction(data);
+    } catch (err) {
+      setApiError(err.message || "Prediction failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const resultRange = prediction
+    ? Math.max(1, Number(prediction.prediction.range_max) - Number(prediction.prediction.range_min))
+    : 1;
+
+  const markerOffset = prediction
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          ((Number(prediction.prediction.predicted_days) - Number(prediction.prediction.range_min)) / resultRange) * 100
+        )
+      )
+    : 50;
+
+  const navTabs = [
+    { id: "predictor", label: "Predictor" },
+    { id: "compare", label: "Comparison" },
+    { id: "faq", label: "FAQ & Tips" },
+    { id: "stats", label: "Statistics" },
+    { id: "resources", label: "Resources" },
+  ];
+
+  return (
+    <main className={`flex min-h-screen ${darkMode ? "bg-slate-950" : "bg-gradient-to-br from-paper via-orange-50 to-cyan-50"} font-body transition-colors duration-300`}>
+      <div className={`pointer-events-none fixed -left-24 top-4 h-56 w-56 rounded-full ${darkMode ? "bg-slate-700/15" : "bg-cyan-200/25"} blur-3xl`} />
+      <div className={`pointer-events-none fixed -right-16 top-24 h-64 w-64 rounded-full ${darkMode ? "bg-slate-700/15" : "bg-orange-200/30"} blur-3xl`} />
+      <div className={`pointer-events-none fixed bottom-6 right-24 h-44 w-44 rounded-full ${darkMode ? "bg-slate-700/10" : "bg-sky-300/20"} blur-3xl`} />
+
+      <aside className={`w-72 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"} border-r shadow-sm overflow-y-auto transition-colors duration-300`}>
+        <div className="p-6">
+          <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-ink"}`}>Navigation</h2>
+          <div className="mt-6 space-y-2">
+            {navTabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`w-full px-4 py-3 rounded-lg text-base font-medium text-left transition-all ${
+                  tab === t.id
+                    ? "bg-lagoon text-white shadow-md"
+                    : darkMode
+                    ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={`border-t ${darkMode ? "border-slate-700" : "border-slate-200"} p-6`}>
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className={`w-full px-4 py-3 rounded-lg text-base font-medium transition ${
+              darkMode
+                ? "bg-slate-700 text-white hover:bg-slate-600"
+                : "bg-slate-200 text-slate-800 hover:bg-slate-300"
+            }`}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {darkMode ? "Light Mode" : "Dark Mode"}
+          </button>
+        </div>
+      </aside>
+
+      <div className={`flex-1 ${darkMode ? "text-slate-100" : "text-ink"} transition-colors duration-300`}>
+        <div className="relative mx-auto w-full px-4 py-8 sm:px-6 lg:px-8 [&_select]:min-h-[48px] [&_select]:py-2.5 [&_select]:text-base [&_select]:leading-6 [&_option]:text-base">
+          <header className={`mb-6 overflow-hidden rounded-3xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-8 shadow-sm transition-colors duration-300`}>
+            <div className="grid items-center gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-8">
+                <h1 className={`font-display text-4xl font-bold tracking-tight ${darkMode ? "text-white" : "text-ink"} sm:text-5xl`}>
+                  Visa Navigator & Processing Estimator
+                </h1>
+                <p className={`mt-3 max-w-3xl text-lg ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                  Explore visa options, compare processing times, and estimate your timeline with ML-powered predictions.
+                </p>
+              </div>
+              <div className="hidden lg:col-span-4 lg:block">
+                <div className={`rounded-2xl border p-2 backdrop-blur-sm ${darkMode ? "border-slate-700/70 bg-slate-700/30" : "border-white/70 bg-white/70"}`}>
+                  <img
+                    src={heroImageSrc}
+                    alt="Visa planning illustration"
+                    className="min-h-[170px] w-full rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div className="mb-8 grid gap-3 sm:grid-cols-4 animate-in fade-in duration-500">
+            <div className={`rounded-2xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-4 shadow-sm transition-colors duration-300`}>
+              <p className={`text-sm uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Visa Types</p>
+              <p className={`mt-1 font-display text-3xl font-semibold ${darkMode ? "text-white" : "text-ink"}`}>{visaTypes.length || "-"}</p>
+            </div>
+            <div className={`rounded-2xl border ${darkMode ? "border-cyan-900/50 bg-cyan-900/20" : "border-cyan-200 bg-cyan-50/70"} p-4 shadow-sm transition-colors duration-300`}>
+              <p className={`text-sm uppercase tracking-wide ${darkMode ? "text-cyan-400" : "text-cyan-700"}`}>Selected</p>
+              <p className={`mt-1 font-display text-3xl font-semibold ${darkMode ? "text-cyan-300" : "text-cyan-900"}`}>{selectedVisaType || "-"}</p>
+            </div>
+            <div className={`rounded-2xl border ${darkMode ? "border-orange-900/50 bg-orange-900/20" : "border-orange-200 bg-orange-50/70"} p-4 shadow-sm transition-colors duration-300`}>
+              <p className={`text-sm uppercase tracking-wide ${darkMode ? "text-orange-400" : "text-orange-700"}`}>Year Range</p>
+              <p className={`mt-1 font-display text-3xl font-semibold ${darkMode ? "text-orange-300" : "text-orange-900"}`}>2015-{currentYear}</p>
+            </div>
+            <div className={`rounded-2xl border ${darkMode ? "border-purple-900/50 bg-purple-900/20" : "border-purple-200 bg-purple-50/70"} p-4 shadow-sm transition-colors duration-300`}>
+              <p className={`text-sm uppercase tracking-wide ${darkMode ? "text-purple-400" : "text-purple-700"}`}>Model Status</p>
+              <p className={`mt-1 font-display text-base font-semibold ${darkMode ? "text-purple-300" : "text-purple-900"}`}>Active</p>
+            </div>
+          </div>
+
+          {apiError ? (
+            <div className={`mb-6 rounded-xl border ${darkMode ? "border-red-900/50 bg-red-900/20 text-red-200" : "border-red-200 bg-red-50 text-red-700"} px-4 py-3 text-base transition-colors duration-300`}>
+              {apiError}
+            </div>
+          ) : null}
+
+          {tab === "predictor" && (
+            <div className="grid gap-6 lg:grid-cols-12 animate-in fade-in duration-500">
+              <div className="space-y-6 lg:col-span-5">
+                <SectionCard title="Which Visa Type Fits You?" subtitle="Answer 4 quick questions for a guided visa type suggestion." icon="●" tone="orange" darkMode={darkMode}>
+                  <div className="space-y-3">
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Primary Goal</label>
+                      <select value={profile.purpose} onChange={(e) => setProfile((prev) => ({ ...prev, purpose: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        {purposeOptions.map((option) => (
+                          <option key={option.value || "empty-purpose"} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>U.S. Employer Sponsor?</label>
+                        <select value={profile.hasSponsor} onChange={(e) => setProfile((prev) => ({ ...prev, hasSponsor: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                          <option value="">Select</option>
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Internal Transfer Case?</label>
+                        <select value={profile.internalTransfer} onChange={(e) => setProfile((prev) => ({ ...prev, internalTransfer: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                          <option value="">Select</option>
+                          <option value="yes">Yes</option>
+                          <option value="no">No</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Admitted by U.S. School?</label>
+                      <select value={profile.hasSchoolAdmission} onChange={(e) => setProfile((prev) => ({ ...prev, hasSchoolAdmission: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <button type="button" onClick={runRecommendation} className="rounded-lg bg-sunrise px-5 py-3 text-base font-semibold text-white transition hover:bg-orange-600">Recommend Visa Type</button>
+                      <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>This is guidance only, not legal advice.</p>
+                    </div>
+                    {recommendations.length > 0 ? (
+                      <div className={`rounded-xl border p-3 ${darkMode ? "border-orange-900/50 bg-orange-900/20" : "border-orange-200 bg-orange-50"}`}>
+                        <p className={`text-base font-medium ${darkMode ? "text-orange-300" : "text-orange-800"}`}>Suggested: <span className="font-bold">{recommendations[0].visaType}</span></p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {recommendations.slice(0, 3).map((item) => (
+                            <button key={item.visaType} type="button" onClick={() => setSelectedVisaType(item.visaType)} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${darkMode ? "border-orange-700 bg-slate-800 text-orange-300 hover:bg-slate-700" : "border-orange-300 bg-white text-orange-800 hover:bg-orange-100"}`}>
+                              {item.visaType}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Select Visa Type" subtitle="Pick the visa type first to unlock tailored guidance." icon="●" tone="cyan" darkMode={darkMode}>
+                  {isLoadingTypes ? (
+                    <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading visa options...</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <label className={`block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`} htmlFor="visaType">Visa Type</label>
+                      <select id="visaType" value={selectedVisaType} onChange={(e) => setSelectedVisaType(e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        {visaTypes.map((type) => (
+                          <option key={type.visa_type} value={type.visa_type}>{type.visa_type}</option>
+                        ))}
+                      </select>
+                      {visaTypes.length > 0 ? (
+                        <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          {visaTypes.find((item) => item.visa_type === selectedVisaType)?.summary || ""}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </SectionCard>
+
+                <SectionCard title="Eligibility Checklist" subtitle="Quick pre-check before you estimate timelines." icon="✓" tone="slate" darkMode={darkMode}>
+                  {isLoadingGuidance ? (
+                    <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading eligibility checklist...</p>
+                  ) : (
+                    <Checklist items={guidance?.eligibility} emptyMessage="Select a visa type to view eligibility criteria." darkMode={darkMode} />
+                  )}
+                </SectionCard>
+
+                <SectionCard title="Document Checklist" subtitle="Prepare these items before filing." icon="■" tone="slate" darkMode={darkMode}>
+                  {isLoadingGuidance ? (
+                    <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading document checklist...</p>
+                  ) : (
+                    <Checklist items={guidance?.documents} emptyMessage="Select a visa type to view required documents." darkMode={darkMode} />
+                  )}
+                </SectionCard>
+              </div>
+
+              <div className="space-y-6 lg:col-span-7">
+                <SectionCard title="Processing Estimator" subtitle="Enter your timeline signals and generate a prediction range." icon="◆" tone="ink" darkMode={darkMode}>
+                  <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+                    <div className="sm:col-span-2">
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Case Status</label>
+                      <select value={formData.case_status} onChange={(e) => updateField("case_status", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select status</option>
+                        {caseStatusOptions.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                      {errors.case_status ? <p className="mt-1 text-sm text-red-600">{errors.case_status}</p> : null}
+                    </div>
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Submission Month</label>
+                      <select value={formData.submission_month} onChange={(e) => updateField("submission_month", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select month</option>
+                        {monthOptions.map((month) => (
+                          <option key={month.value} value={month.value}>{month.label}</option>
+                        ))}
+                      </select>
+                      {errors.submission_month ? <p className="mt-1 text-sm text-red-600">{errors.submission_month}</p> : null}
+                    </div>
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Submission Quarter</label>
+                      <select value={formData.submission_quarter} onChange={(e) => updateField("submission_quarter", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select quarter</option>
+                        {quarterOptions.map((quarter) => (
+                          <option key={quarter.value} value={quarter.value}>{quarter.label}</option>
+                        ))}
+                      </select>
+                      {errors.submission_quarter ? <p className="mt-1 text-sm text-red-600">{errors.submission_quarter}</p> : null}
+                    </div>
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Submission Day</label>
+                      <select value={formData.submission_dayofweek} onChange={(e) => updateField("submission_dayofweek", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select day</option>
+                        {dayOptions.map((day) => (
+                          <option key={day.value} value={day.value}>{day.label}</option>
+                        ))}
+                      </select>
+                      {errors.submission_dayofweek ? <p className="mt-1 text-sm text-red-600">{errors.submission_dayofweek}</p> : null}
+                    </div>
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Case Year</label>
+                      <select value={formData.case_year} onChange={(e) => updateField("case_year", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        <option value="">Select year</option>
+                        {yearOptions.map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                      {errors.case_year ? <p className="mt-1 text-sm text-red-600">{errors.case_year}</p> : null}
+                    </div>
+                    <div className="sm:col-span-2 mt-2 flex flex-wrap gap-3">
+                      <button type="submit" disabled={isSubmitting} className="rounded-lg bg-ink px-5 py-3 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
+                        {isSubmitting ? "Estimating..." : "Generate Estimate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ case_status: "", submission_month: "", submission_quarter: "", submission_dayofweek: "", case_year: "" });
+                          setPrediction(null);
+                          setErrors({});
+                          setApiError("");
+                        }}
+                        className={`rounded-lg border ${darkMode ? "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"} px-5 py-3 text-base font-medium transition-colors duration-300`}
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </form>
+                </SectionCard>
+
+                <SectionCard title="Estimate Result" subtitle="Prediction window and confidence margin from historical trends." icon="◆" tone="cyan" darkMode={darkMode}>
+                  {!prediction ? (
+                    <div className={`rounded-xl border-2 border-dashed ${darkMode ? "border-slate-600 bg-slate-800/50" : "border-slate-300 bg-white/80"} p-6 transition-colors duration-300`}>
+                      <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        Fill the estimator form and generate a prediction.
+                      </p>
+                      <img src={resultImageSrc} alt="Prediction visual preview" className={`mt-4 w-full rounded-xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`} loading="lazy" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className={`rounded-xl bg-gradient-to-br ${darkMode ? "from-orange-900/30 to-orange-800/20" : "from-orange-50 to-orange-100"} p-4 transition-colors duration-300`}>
+                          <p className={`text-sm uppercase tracking-wide font-medium ${darkMode ? "text-orange-400" : "text-orange-700"}`}>Predicted Days</p>
+                          <p className={`text-3xl font-semibold ${darkMode ? "text-orange-300" : "text-orange-900"}`}>{prediction.prediction.predicted_days}</p>
+                        </div>
+                        <div className={`rounded-xl bg-gradient-to-br ${darkMode ? "from-cyan-900/30 to-cyan-800/20" : "from-cyan-50 to-cyan-100"} p-4 transition-colors duration-300`}>
+                          <p className={`text-sm uppercase tracking-wide font-medium ${darkMode ? "text-cyan-400" : "text-cyan-700"}`}>Lower Bound</p>
+                          <p className={`text-3xl font-semibold ${darkMode ? "text-cyan-300" : "text-cyan-900"}`}>{prediction.prediction.range_min}</p>
+                        </div>
+                        <div className={`rounded-xl bg-gradient-to-br ${darkMode ? "from-slate-700 to-slate-600/50" : "from-slate-100 to-slate-200"} p-4 transition-colors duration-300`}>
+                          <p className={`text-sm uppercase tracking-wide font-medium ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Upper Bound</p>
+                          <p className={`text-3xl font-semibold ${darkMode ? "text-slate-200" : "text-slate-900"}`}>{prediction.prediction.range_max}</p>
+                        </div>
+                      </div>
+                      <div className={`rounded-xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-4 transition-colors duration-300`}>
+                        <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Prediction Range Visual</p>
+                        <div className="mt-3">
+                          <div className={`relative h-3 rounded-full ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                            <div className="absolute left-0 top-0 h-3 w-full rounded-full bg-gradient-to-r from-cyan-300 via-cyan-500 to-orange-400" />
+                            <div className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border-4 border-white bg-gradient-to-r from-cyan-400 to-orange-400 shadow-lg transition-all" style={{ left: `calc(${markerOffset}% - 10px)` }} />
+                          </div>
+                        </div>
+                      </div>
+                      <PredictionContextVisualization 
+                        formData={formData} 
+                        prediction={prediction}
+                        darkMode={darkMode}
+                      />
+                    </div>
+                  )}
+                </SectionCard>
+
+              </div>
+            </div>
+          )}
+
+          {tab === "compare" && (
+            <div className="animate-in fade-in duration-500">
+              <SectionCard title="Visa Type Comparison Matrix" subtitle="Browse and compare all available visa types side-by-side." icon="◆" tone="purple" darkMode={darkMode}>
+                <VisaComparisonMatrix darkMode={darkMode} />
+              </SectionCard>
+            </div>
+          )}
+
+          {tab === "faq" && (
+            <div className="animate-in fade-in duration-500">
+              <SectionCard title="Frequently Asked Questions & Tips" subtitle="Get answers to common questions about visa processing and our predictions." icon="●" tone="green" darkMode={darkMode}>
+                <FAQAccordion darkMode={darkMode} />
+              </SectionCard>
+            </div>
+          )}
+
+          {tab === "stats" && (
+            <div className="animate-in fade-in duration-500">
+              <SectionCard title="Processing Statistics & Insights" subtitle="Historical data and trends from visa processing cases." icon="◆" tone="cyan" darkMode={darkMode}>
+                <StatisticsDashboard darkMode={darkMode} />
+              </SectionCard>
+            </div>
+          )}
+
+          {tab === "resources" && (
+            <div className="animate-in fade-in duration-500">
+              <SectionCard title="Official Resources & Links" subtitle="Quick access to government agencies and helpful resources." icon="●" tone="orange" darkMode={darkMode}>
+                <ResourcesHub darkMode={darkMode} />
+              </SectionCard>
+            </div>
+          )}
+
+          <footer className={`mt-12 rounded-2xl border ${darkMode ? "border-slate-700 bg-slate-800/50" : "border-slate-200 bg-white/50"} p-6 backdrop-blur-sm text-center text-base ${darkMode ? "text-slate-400" : "text-slate-600"} transition-colors duration-300`}>
+            <p>
+              This tool provides estimates for planning purposes only. Actual processing times vary based on case complexity, administrative workload, and policy changes.
+              For legal advice, consult a qualified immigration attorney.
+            </p>
+            <p className="mt-2">© 2024 Visa Navigator. Data sourced from historical H-1B processing cases.</p>
+          </footer>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);

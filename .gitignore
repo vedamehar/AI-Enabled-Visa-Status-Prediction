@@ -1,0 +1,32 @@
+# Python cache and virtual env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.ipynb_checkpoints/
+
+# Jupyter artifacts
+*.ipynb_checkpoints
+
+# Large local datasets and archives
+*.csv
+*.xlsx
+*.zip
+raw datasets/
+processed dataset/
+
+# Local build outputs and logs
+*.log
+
+# Keep model artifacts tracked
+!models/*.pkl
+!models/*.csv
+
+# Keep selected documentation and source
+!Readme.md
+!FLASK_README.md
+!app.py
+!requirements.txt
+!render.yaml
+!Procfile

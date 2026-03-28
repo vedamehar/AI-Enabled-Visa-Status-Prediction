@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visa Navigator and Processing Estimator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        paper: '#fff9f0',
+                        ink: '#14213d',
+                        sunrise: '#ff6b35',
+                        lagoon: '#0077b6'
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'sans-serif'],
+                        body: ['Public Sans', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* Native select popup text on Windows can stay tiny unless forced. */
+        select {
+            font-size: 18px !important;
+            line-height: 1.35 !important;
+            min-height: 48px !important;
+        }
+
+        select option {
+            font-size: 18px !important;
+            line-height: 1.35 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-paper via-orange-50 to-cyan-50 font-body text-ink">
+    <div id="root"></div>
+    <script type="text/babel" src="{{ url_for('static', filename='react-app.js') }}"></script>
+</body>
+</html>
