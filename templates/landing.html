@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visa Navigator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        paper: '#fff9f0',
+                        ink: '#14213d',
+                        sunrise: '#ff6b35',
+                        lagoon: '#0077b6',
+                        ember: '#ff4d6d',
+                        citrus: '#f7b801'
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'sans-serif'],
+                        body: ['Public Sans', 'sans-serif']
+                    },
+                    boxShadow: {
+                        glow: '0 15px 55px rgba(0, 119, 182, 0.22)'
+                    }
+                }
+            }
+        };
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-paper via-orange-50 to-cyan-50 font-body text-ink" data-app-url="{{ url_for('app_page') }}">
+    <div id="landing-root"></div>
+
+    <script type="text/babel">
+        const { useEffect, useMemo, useState } = React;
+        const { motion } = Motion;
+        const THEME_STORAGE_KEY = "visaThemePreference";
+
+        const blobOneAnimate = { x: [0, 18, -10, 0], y: [0, -14, 10, 0] };
+        const blobOneTransition = { duration: 12, repeat: Infinity, ease: "easeInOut" };
+        const blobTwoAnimate = { x: [0, -22, 14, 0], y: [0, 16, -12, 0] };
+        const blobTwoTransition = { duration: 14, repeat: Infinity, ease: "easeInOut" };
+        const heroInitial = { opacity: 0, y: 18 };
+        const heroAnimate = { opacity: 1, y: 0 };
+        const heroTransition = { duration: 0.7 };
+        const sideInitial = { opacity: 0, x: 18 };
+        const sideAnimate = { opacity: 1, x: 0 };
+        const sideTransition = { duration: 0.7, delay: 0.15 };
+        const cardInitial = { opacity: 0, y: 12 };
+        const cardAnimate = { opacity: 1, y: 0 };
+        const cardHover = { y: -5 };
+        const getCardTransition = (idx) => ({ duration: 0.5, delay: 0.2 + idx * 0.12 });
+
+        const featureCards = [
+            { title: "Visa Fit Guidance", detail: "Get a focused recommendation path before filing." },
+            { title: "Timeline Estimation", detail: "Estimate probable processing windows from historical patterns." },
+            { title: "Document Checklists", detail: "Review required paperwork before submitting your case." }
+        ];
+
+        function LandingApp() {
+            const appUrl = document.body.dataset.appUrl || "/app";
+            const [darkMode, setDarkMode] = useState(false);
+
+            useEffect(() => {
+                try {
+                    const themeFromUrl = new URLSearchParams(window.location.search).get("theme");
+                    if (themeFromUrl === "dark") {
+                        setDarkMode(true);
+                        return;
+                    }
+                    if (themeFromUrl === "light") {
+                        setDarkMode(false);
+                        return;
+                    }
+
+                    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+                    setDarkMode(storedTheme === "dark");
+                } catch (error) {
+                    setDarkMode(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                try {
+                    window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? "dark" : "light");
+                } catch (error) {
+                    // Ignore storage failures in restricted browsing contexts.
+                }
+            }, [darkMode]);
+
+            const tone = useMemo(() => {
+                if (darkMode) {
+                    return {
+                        page: "from-slate-950 via-slate-900 to-slate-950 text-slate-100",
+                        shell: "border-slate-700 bg-slate-900/80",
+                        muted: "text-slate-300",
+                        chip: "border-cyan-700 bg-cyan-900/40 text-cyan-200",
+                        card: "border-slate-700 bg-slate-800/85",
+                        secondaryBtn: "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    };
+                }
+
+                return {
+                    page: "from-paper via-orange-50 to-cyan-50 text-ink",
+                    shell: "border-slate-200 bg-white/85",
+                    muted: "text-slate-600",
+                    chip: "border-cyan-200 bg-cyan-50 text-cyan-800",
+                    card: "border-slate-200 bg-white/90",
+                    secondaryBtn: "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                };
+            }, [darkMode]);
+
+            return (
+                <main className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${tone.page} transition-colors duration-300`}>
+                    <motion.div
+                        className={`pointer-events-none absolute -left-20 top-14 h-72 w-72 rounded-full ${darkMode ? 'bg-cyan-500/15' : 'bg-cyan-300/35'} blur-3xl`}
+                        animate={blobOneAnimate}
+                        transition={blobOneTransition}
+                    />
+                    <motion.div
+                        className={`pointer-events-none absolute -right-16 bottom-10 h-80 w-80 rounded-full ${darkMode ? 'bg-rose-500/15' : 'bg-rose-300/35'} blur-3xl`}
+                        animate={blobTwoAnimate}
+                        transition={blobTwoTransition}
+                    />
+
+                    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
+                        <div className="mb-5 flex items-center justify-between gap-3">
+                            <p className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${tone.chip}`}>
+                                AI Enabled Visa Planning
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setDarkMode((prev) => !prev)}
+                                className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${tone.secondaryBtn}`}
+                                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                            >
+                                {darkMode ? "Light Mode" : "Dark Mode"}
+                            </button>
+                        </div>
+
+                        <section className={`relative overflow-hidden rounded-3xl border p-6 shadow-glow backdrop-blur-sm sm:p-10 ${tone.shell}`}>
+                            <div className="grid items-start gap-8 lg:grid-cols-12">
+                                <motion.div
+                                    className="lg:col-span-7"
+                                    initial={heroInitial}
+                                    animate={heroAnimate}
+                                    transition={heroTransition}
+                                >
+                                    <h1 className="font-display text-4xl font-bold leading-tight sm:text-6xl">
+                                        Build a Clear
+                                        <span className="bg-gradient-to-r from-lagoon via-ember to-citrus bg-clip-text text-transparent"> Visa Strategy </span>
+                                        Before You File
+                                    </h1>
+                                    <p className={`mt-4 max-w-2xl text-lg ${tone.muted}`}>
+                                        Start with a guided overview, then enter the estimator experience to compare visa routes,
+                                        review eligibility, and forecast timelines with model-backed insights.
+                                    </p>
+
+                                    <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                        <a
+                                            href={`${appUrl}?theme=${darkMode ? "dark" : "light"}#compare`}
+                                            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-lagoon to-sunrise px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:opacity-95"
+                                        >
+                                            Open Main Dashboard
+                                        </a>
+                                        <a
+                                            href={`${appUrl}?theme=${darkMode ? "dark" : "light"}#predictor`}
+                                            className={`inline-flex items-center justify-center rounded-xl border px-6 py-3 text-base font-semibold transition ${tone.secondaryBtn}`}
+                                        >
+                                            Start With Predictor
+                                        </a>
+                                    </div>
+                                </motion.div>
+
+                                <motion.div
+                                    className="lg:col-span-5"
+                                    initial={sideInitial}
+                                    animate={sideAnimate}
+                                    transition={sideTransition}
+                                >
+                                    <div className={`rounded-2xl border p-5 ${tone.card}`}>
+                                        <p className="font-display text-2xl font-semibold">What You Can Do Next</p>
+                                        <ul className={`mt-4 space-y-3 text-base ${tone.muted}`}>
+                                            <li className="flex gap-2"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-lagoon"></span><span>Get a visa-path recommendation for your goal.</span></li>
+                                            <li className="flex gap-2"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sunrise"></span><span>Estimate processing windows for planning.</span></li>
+                                            <li className="flex gap-2"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500"></span><span>Check eligibility and documents before filing.</span></li>
+                                        </ul>
+                                    </div>
+                                </motion.div>
+                            </div>
+
+                            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                                {featureCards.map((card, idx) => (
+                                    <motion.div
+                                        key={card.title}
+                                        initial={cardInitial}
+                                        animate={cardAnimate}
+                                        transition={getCardTransition(idx)}
+                                        whileHover={cardHover}
+                                        className={`rounded-2xl border p-4 ${tone.card}`}
+                                    >
+                                        <p className="font-display text-xl font-semibold">{card.title}</p>
+                                        <p className={`mt-2 text-sm ${tone.muted}`}>{card.detail}</p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                </main>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("landing-root")).render(<LandingApp />);
+    </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 const { useEffect, useMemo, useState } = React;
+const THEME_STORAGE_KEY = "visaThemePreference";
 
 const monthOptions = [
   { value: 1, label: "January" },
@@ -736,7 +737,21 @@ function App() {
   }, [currentYear]);
 
   const [tab, setTab] = useState("predictor");
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const themeParam = new URLSearchParams(window.location.search).get("theme");
+      if (themeParam === "dark") {
+        return true;
+      }
+      if (themeParam === "light") {
+        return false;
+      }
+      return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark";
+    } catch (error) {
+      return false;
+    }
+  });
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const [visaTypes, setVisaTypes] = useState([]);
   const [selectedVisaType, setSelectedVisaType] = useState("H-1B");
@@ -903,13 +918,57 @@ function App() {
     { id: "resources", label: "Resources" },
   ];
 
+  useEffect(() => {
+    const validTabIds = new Set(navTabs.map((item) => item.id));
+
+    function syncTabFromHash() {
+      const hashTab = window.location.hash.replace(/^#/, "").trim().toLowerCase();
+      if (hashTab && validTabIds.has(hashTab)) {
+        setTab(hashTab);
+      }
+    }
+
+    syncTabFromHash();
+    window.addEventListener("hashchange", syncTabFromHash);
+
+    return () => window.removeEventListener("hashchange", syncTabFromHash);
+  }, []);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [tab]);
+
+  useEffect(() => {
+    if (window.location.hash !== `#${tab}`) {
+      window.history.replaceState(null, "", `#${tab}`);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    try {
+      const themeValue = darkMode ? "dark" : "light";
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeValue);
+
+      const nextUrl = new URL(window.location.href);
+      if (nextUrl.searchParams.get("theme") !== themeValue) {
+        nextUrl.searchParams.set("theme", themeValue);
+        window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      }
+    } catch (error) {
+      // Ignore storage/URL update issues in restricted browser contexts.
+    }
+  }, [darkMode]);
+
   return (
-    <main className={`flex min-h-screen ${darkMode ? "bg-slate-950" : "bg-gradient-to-br from-paper via-orange-50 to-cyan-50"} font-body transition-colors duration-300`}>
+    <main className={`flex min-h-screen flex-col lg:flex-row ${darkMode ? "bg-slate-950" : "bg-gradient-to-br from-paper via-orange-50 to-cyan-50"} font-body transition-colors duration-300`}>
+      <a href="#main-content" className={`sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:px-4 focus:py-2 ${darkMode ? "focus:bg-slate-800 focus:text-white" : "focus:bg-white focus:text-slate-900"}`}>
+        Skip to main content
+      </a>
       <div className={`pointer-events-none fixed -left-24 top-4 h-56 w-56 rounded-full ${darkMode ? "bg-slate-700/15" : "bg-cyan-200/25"} blur-3xl`} />
       <div className={`pointer-events-none fixed -right-16 top-24 h-64 w-64 rounded-full ${darkMode ? "bg-slate-700/15" : "bg-orange-200/30"} blur-3xl`} />
       <div className={`pointer-events-none fixed bottom-6 right-24 h-44 w-44 rounded-full ${darkMode ? "bg-slate-700/10" : "bg-sky-300/20"} blur-3xl`} />
 
-      <aside className={`w-72 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"} border-r shadow-sm overflow-y-auto transition-colors duration-300`}>
+      <aside className={`hidden lg:block lg:w-72 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"} border-r shadow-sm overflow-y-auto transition-colors duration-300`}>
         <div className="p-6">
           <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-ink"}`}>Navigation</h2>
           <div className="mt-6 space-y-2">
@@ -946,7 +1005,57 @@ function App() {
       </aside>
 
       <div className={`flex-1 ${darkMode ? "text-slate-100" : "text-ink"} transition-colors duration-300`}>
-        <div className="relative mx-auto w-full px-4 py-8 sm:px-6 lg:px-8 [&_select]:min-h-[48px] [&_select]:py-2.5 [&_select]:text-base [&_select]:leading-6 [&_option]:text-base">
+        <div className="px-4 pt-4 lg:hidden">
+          <div className={`rounded-2xl border ${darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white"} p-3 shadow-sm`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className={`text-xs uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Visa Navigator</p>
+                <p className={`text-sm font-semibold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{navTabs.find((t) => t.id === tab)?.label || "Predictor"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${darkMode ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-800"}`}
+                  aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                >
+                  {darkMode ? "Light" : "Dark"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileNavOpen((prev) => !prev)}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold ${darkMode ? "bg-cyan-700 text-white" : "bg-cyan-600 text-white"}`}
+                  aria-expanded={isMobileNavOpen}
+                  aria-controls="mobile-nav-menu"
+                >
+                  Menu
+                </button>
+              </div>
+            </div>
+
+            {isMobileNavOpen ? (
+              <div id="mobile-nav-menu" className="mt-3 grid gap-2">
+                {navTabs.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                      tab === t.id
+                        ? "bg-lagoon text-white"
+                        : darkMode
+                        ? "bg-slate-800 text-slate-300"
+                        : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div id="main-content" className="relative mx-auto w-full px-4 py-8 sm:px-6 lg:px-8 [&_select]:min-h-[48px] [&_select]:py-2.5 [&_select]:text-base [&_select]:leading-6 [&_option]:text-base">
           <header className={`mb-6 overflow-hidden rounded-3xl border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"} p-8 shadow-sm transition-colors duration-300`}>
             <div className="grid items-center gap-6 lg:grid-cols-12">
               <div className="lg:col-span-8">
