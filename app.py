@@ -490,7 +490,13 @@ def predict_processing_time(case_status, submission_month, submission_quarter,
 
 @app.route('/')
 def index():
-    """Render the main page"""
+    """Render landing page"""
+    return render_template('landing.html')
+
+
+@app.route('/app')
+def app_page():
+    """Render the main application page"""
     return render_template('index.html')
 
 
