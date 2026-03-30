@@ -353,18 +353,6 @@ To avoid confusion during review, this project includes two XGBoost variants fro
 
 ---
 
-## 📊 Model Comparison Results
-
-| Model | MAE | RMSE | R² |
-| --- | ---: | ---: | ---: |
-| Linear Regression | 5.5609 | 24.3321 | 0.4732 |
-| Random Forest | 4.5179 | 22.5553 | 0.5473 |
-| Gradient Boosting | 4.7443 | 22.6361 | 0.5441 |
-
-The Random Forest model delivered the strongest baseline performance and was selected for hyperparameter tuning.
-
----
-
 ## 📊 Model Comparison Results (Baseline Single-Model)
 
 | Model | MAE | RMSE | R² | Notes |
