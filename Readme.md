@@ -58,7 +58,8 @@ Download from Assets section in the releases section in this repo or you can run
 
 3. **Module 3** – Predictive Modeling (3 Baseline Models)  
    - Linear Regression, Random Forest, Gradient Boosting
-   - Best baseline performer: Random Forest (MAE: 4.52)
+   - Best in the initial baseline round: Random Forest (MAE: 4.52)
+   - Best overall performer in this project: Tuned XGBoost
    - *Limitation: Single model for all visa types*
 
 4. **Module 4** – Processing Time Estimator Engine (Scaled Multi-Model)  
@@ -316,7 +317,7 @@ EDA ensures data-driven feature selection.
 Initial predictive modeling implemented 3 classical ML models trained on single combined dataset:
 
 - **Linear Regression** - Fast linear baseline
-- **Random Forest Regressor** - Best baseline (selected)
+- **Random Forest Regressor** - Best baseline in the initial comparison
 - **Gradient Boosting Regressor** - Gradient-enhanced alternative
 
 Training and model checkpoint generation are handled by `Modelling.py`. All trained artifacts and comparison outputs are stored in the `models/` directory.
@@ -352,16 +353,15 @@ To avoid confusion during review, this project includes two XGBoost variants fro
 **Objective:** Select best-performing model with optimal bias-variance tradeoff.
 
 ---
-
 ## 📊 Model Comparison Results (Baseline Single-Model)
 
 | Model | MAE | RMSE | R² | Notes |
 | --- | ---: | ---: | ---: | --- |
 | Linear Regression | 5.5609 | 24.3321 | 0.4732 | Fast but underfits |
-| Random Forest | 4.5179 | 22.5553 | 0.5473 | ⭐ **Selected** - Best baseline |
+| Random Forest | 4.5179 | 22.5553 | 0.5473 | Best in baseline-only comparison |
 | Gradient Boosting | 4.7443 | 22.6361 | 0.5441 | Good but slower |
 
-The Random Forest model delivered the strongest baseline performance and was selected for hyperparameter tuning.
+Random Forest was strongest in baseline-only testing, while tuned XGBoost is the best overall and production model.
 
 ### Key Insight:
 Single model trained on all visa types (H-1B, E-3, etc.) achieves ~MAE 4.52.  
@@ -396,6 +396,8 @@ For documentation consistency: the standalone fixed-parameter checkpoint `visa_p
 - Linear Regression (MAE: 5.56, R²: 0.47)
 - Random Forest (MAE: 4.52, R²: 0.55) ⭐ **Best Baseline**
 - Gradient Boosting (MAE: 4.74, R²: 0.54)
+
+**Important:** Best baseline does not mean best overall. The best overall/production performer is tuned XGBoost.
 
 **Limitation:** Single model trained across all visa types (H-1B, E-3, H-1B1, etc.) dilutes prediction accuracy due to visa-specific processing patterns.
 
@@ -662,7 +664,7 @@ http://localhost:5000
 - Alternate standalone checkpoint (for comparison): `visa_processing_model_xgb.pkl` with shared-run metrics **MAE 0.35**, **RMSE 1.91**, **R² 0.67**, **Accuracy 66.67%**
 
 ### Multi-Model Improvement:
-- Baseline single-model (RF best baseline): **MAE 4.52**, **R² 0.55**
+- Baseline single-model (historical RF baseline reference): **MAE 4.52**, **R² 0.55**
 - Tuned XGBoost production checkpoint: **MAE 0.37**, **R² 0.67**
 - Visa-specific + ensemble routing remains enabled for broader visa-type coverage in production.
 - Confidence Intervals: ±2.0 to ±3.0 days (95% coverage)
