@@ -329,7 +329,7 @@ AVAILABLE_VISA_TYPES = load_visa_types_from_data()
 
 # Nationality-based eligibility requirements for visa types
 VISA_NATIONALITY_REQUIREMENTS = {
-    'H-1B': None,  # Open to all nationalities
+    'H-1B': None,  # US citizens only
     'E-3 Australian': 'Australia',  # Australian citizens only
     'H-1B1 Singapore': 'Singapore',  # Singapore citizens only
     'H-1B1 Chile': 'Chile',  # Chilean citizens only
@@ -340,7 +340,6 @@ NATIONALITY_OPTIONS = [
     'Australia',
     'Singapore', 
     'Chile',
-    'Other Foreign National',
 ]
 
 

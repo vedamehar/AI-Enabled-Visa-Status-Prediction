@@ -39,7 +39,6 @@ const nationalityOptions = [
   { value: "Australia", label: "Australia" },
   { value: "Singapore", label: "Singapore" },
   { value: "Chile", label: "Chile" },
-  { value: "Other Foreign National", label: "Other Foreign National" },
 ];
 
 const caseStatusOptions = [
@@ -680,63 +679,22 @@ function ResourcesHub({ darkMode = false }) {
 }
 
 function buildRecommendation(profile, availableTypes) {
-  const scores = {};
-  availableTypes.forEach((item) => {
-    scores[item.visa_type] = 0;
-  });
-
-  const hasType = (type) => Object.prototype.hasOwnProperty.call(scores, type);
-  const add = (type, value) => {
-    if (hasType(type)) {
-      scores[type] += value;
-    }
+  const nationalityPriority = {
+    "United States": ["H-1B", "E-3 Australian", "H-1B1 Singapore", "H-1B1 Chile"],
+    "Australia": ["E-3 Australian", "H-1B", "H-1B1 Singapore", "H-1B1 Chile"],
+    "Singapore": ["H-1B1 Singapore", "H-1B", "E-3 Australian", "H-1B1 Chile"],
+    "Chile": ["H-1B1 Chile", "H-1B", "E-3 Australian", "H-1B1 Singapore"],
   };
 
-  // Nationality-based eligibility filtering
-  const nationalityEligibility = {
-    "H-1B": ["United States", "Australia", "Singapore", "Chile", "Other Foreign National"],
-    "E-3 Australian": ["Australia", "Other Foreign National"],
-    "H-1B1 Singapore": ["Singapore", "Other Foreign National"],
-    "H-1B1 Chile": ["Chile", "Other Foreign National"],
-  };
+  const availableVisaTypes = new Set(availableTypes.map((item) => item.visa_type));
+  const orderedVisaTypes = nationalityPriority[profile.nationality] || ["H-1B", "E-3 Australian", "H-1B1 Singapore", "H-1B1 Chile"];
 
-  // Apply nationality restrictions
-  if (profile.nationality) {
-    for (const [visaType, eligibleNationalities] of Object.entries(nationalityEligibility)) {
-      if (!eligibleNationalities.includes(profile.nationality)) {
-        scores[visaType] = -999; // Mark as ineligible
-      }
-    }
-  }
-
-  if (profile.purpose === "work") {
-    add("H-1B", 7);
-    add("E-3 Australian", 5);
-    add("H-1B1 Singapore", 5);
-    add("H-1B1 Chile", 5);
-  }
-
-  if (profile.hasSponsor === "yes") {
-    add("H-1B", 3);
-    add("E-3 Australian", 2);
-    add("H-1B1 Singapore", 2);
-    add("H-1B1 Chile", 2);
-  }
-  if (profile.hasSponsor === "no") {
-    // Dataset-covered visa classes are employer-sponsored work visas.
-    // Keep scores unchanged to avoid suggesting unsupported categories.
-  }
-
-  if (profile.internalTransfer === "yes") {
-    add("H-1B", 1);
-  }
-
-  const ranking = Object.entries(scores)
-    .sort((a, b) => b[1] - a[1])
-    .map(([visaType, score]) => ({ visaType, score }))
-    .filter((item) => item.score > 0);
-
-  return ranking;
+  return orderedVisaTypes
+    .filter((visaType) => availableVisaTypes.has(visaType))
+    .map((visaType, index) => ({
+      visaType,
+      score: orderedVisaTypes.length - index,
+    }));
 }
 
 function App() {
@@ -787,10 +745,6 @@ function App() {
   const [prediction, setPrediction] = useState(null);
   const [profile, setProfile] = useState({
     nationality: "",
-    purpose: "",
-    hasSponsor: "",
-    internalTransfer: "",
-    hasSchoolAdmission: "",
   });
   const [recommendations, setRecommendations] = useState([]);
 
@@ -909,7 +863,6 @@ function App() {
     try {
       const payload = {
         visa_type: selectedVisaType,
-        nationality: formData.nationality,
         case_status: requiresLcaStatus ? formData.case_status : "CERTIFIED",
         submission_month: Number(formData.submission_month),
         submission_quarter: Number(formData.submission_quarter),
@@ -1147,7 +1100,7 @@ function App() {
           {tab === "predictor" && (
             <div className="grid gap-6 lg:grid-cols-12 animate-in fade-in duration-500">
               <div className="space-y-6 lg:col-span-5">
-                <SectionCard title="Which Visa Type Fits You?" subtitle="Answer 5 quick questions for a guided visa type suggestion." icon="●" tone="orange" darkMode={darkMode}>
+                <SectionCard title="Which Visa Type Fits You?" subtitle="Select your citizenship to get a guided visa type suggestion." icon="●" tone="orange" darkMode={darkMode}>
                   <div className="space-y-3">
                     <div>
                       <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Your Citizenship / Nationality</label>
@@ -1156,40 +1109,9 @@ function App() {
                           <option key={nat.value} value={nat.value}>{nat.label}</option>
                         ))}
                       </select>
-                    </div>
-                    <div>
-                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Primary Goal</label>
-                      <select value={profile.purpose} onChange={(e) => setProfile((prev) => ({ ...prev, purpose: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                        {purposeOptions.map((option) => (
-                          <option key={option.value || "empty-purpose"} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>U.S. Employer Sponsor?</label>
-                        <select value={profile.hasSponsor} onChange={(e) => setProfile((prev) => ({ ...prev, hasSponsor: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                          <option value="">Select</option>
-                          <option value="yes">Yes</option>
-                          <option value="no">No</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Internal Transfer Case?</label>
-                        <select value={profile.internalTransfer} onChange={(e) => setProfile((prev) => ({ ...prev, internalTransfer: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                          <option value="">Select</option>
-                          <option value="yes">Yes</option>
-                          <option value="no">No</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Admitted by U.S. School?</label>
-                      <select value={profile.hasSchoolAdmission} onChange={(e) => setProfile((prev) => ({ ...prev, hasSchoolAdmission: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                        <option value="">Select</option>
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                      </select>
+                      <p className={`mt-2 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        This is the main filter. The four dataset-covered visa types stay available, but the order changes based on citizenship.
+                      </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 pt-1">
                       <button type="button" onClick={runRecommendation} className="rounded-lg bg-sunrise px-5 py-3 text-base font-semibold text-white transition hover:bg-orange-600">Recommend Visa Type</button>
@@ -1197,14 +1119,10 @@ function App() {
                     </div>
                     {recommendations.length > 0 ? (
                       <div className={`rounded-xl border p-3 ${darkMode ? "border-orange-900/50 bg-orange-900/20" : "border-orange-200 bg-orange-50"}`}>
-                        <p className={`text-base font-medium ${darkMode ? "text-orange-300" : "text-orange-800"}`}>Suggested: <span className="font-bold">{recommendations[0].visaType}</span></p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {recommendations.slice(0, 3).map((item) => (
-                            <button key={item.visaType} type="button" onClick={() => setSelectedVisaType(item.visaType)} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${darkMode ? "border-orange-700 bg-slate-800 text-orange-300 hover:bg-slate-700" : "border-orange-300 bg-white text-orange-800 hover:bg-orange-100"}`}>
-                              {item.visaType}
-                            </button>
-                          ))}
-                        </div>
+                        <p className={`text-base font-medium ${darkMode ? "text-orange-300" : "text-orange-800"}`}>Suggested for {profile.nationality || "your profile"}: <span className="font-bold">{recommendations[0].visaType}</span></p>
+                        <p className={`mt-1 text-sm ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                          The four dataset-covered visa types remain available in the selector, but this recommendation highlights only the best match.
+                        </p>
                       </div>
                     ) : null}
                   </div>
@@ -1293,26 +1211,6 @@ function App() {
                     </div>
                   ) : null}
                   <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
-                    <div className="sm:col-span-2">
-                      <div className="mb-2 flex items-center gap-2">
-                        <label className={`block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Your Citizenship / Nationality</label>
-                        <span
-                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold ${darkMode ? "border-slate-500 text-slate-300" : "border-slate-400 text-slate-600"}`}
-                          title="Select your citizenship to see visa options you're eligible for. E-3 is for Australians, H-1B1 Singapore for Singaporeans, H-1B1 Chile for Chileans. H-1B is open to all."
-                          aria-label="Nationality eligibility info"
-                        >
-                          i
-                        </span>
-                      </div>
-                      <select value={formData.nationality} onChange={(e) => updateField("nationality", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                        {nationalityOptions.map((nat) => (
-                          <option key={nat.value} value={nat.value}>{nat.label}</option>
-                        ))}
-                      </select>
-                      <p className={`mt-2 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        Your citizenship determines which visa types you're eligible for. This ensures only relevant options are shown.
-                      </p>
-                    </div>
                     {requiresLcaStatus ? (
                     <div className="sm:col-span-2">
                       <div className="mb-2 flex items-center gap-2">
