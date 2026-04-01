@@ -442,6 +442,12 @@ Trained 4 specialized models using XGBoost (visa-specific training):
 
 **When Used:** If visa type not in {H-1B, E-3, H-1B1 Singapore, H-1B1 Chile}
 
+**Transparency for Reviewers (Important):**
+- Non-H1B records in this project dataset are concentrated in E-3 and H-1B1 classes.
+- Visa classes like **F-1**, **L-1**, and **B-1/B-2** are available in guidance UX, but may not have direct training rows in the model dataset.
+- In those cases, the app still returns a directional estimate using ensemble/mapped fallback logic and clearly marks this in API/UI scope notes.
+- Treat F-1 style outputs as planning guidance, not a direct visa-specific calibrated estimate.
+
 ---
 
 #### **Layer 3: Feature Encoding** 🔐
