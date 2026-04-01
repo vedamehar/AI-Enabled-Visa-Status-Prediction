@@ -38,6 +38,7 @@ const caseStatusOptions = [
   { value: "DENIED", label: "Not Approved" },
 ];
 const lcaRequiredVisaTypes = new Set(["H-1B", "E-3 Australian", "H-1B1 Singapore", "H-1B1 Chile"]);
+const datasetCoveredVisaTypes = new Set(["H-1B", "E-3 Australian", "H-1B1 Singapore", "H-1B1 Chile"]);
 
 const purposeOptions = [
   { value: "", label: "Select purpose" },
@@ -51,7 +52,7 @@ const resultImageSrc = "/static/images/result-visual.svg";
 const faqItems = [
   {
     question: "What is the H-1B visa?",
-    answer: "The H-1B is a temporary work visa for specialty occupations requiring a bachelor's degree or higher. Common fields include IT, engineering, finance, and consulting. Processing typically ranges from 2-8 months depending on the fiscal year and case specifics."
+    answer: "The H-1B is a temporary U.S. work visa for foreign professionals in specialty occupations requiring a bachelor's degree or higher. Common fields include IT, engineering, finance, and consulting. Processing typically ranges from 2-8 months depending on the fiscal year and case specifics."
   },
   {
     question: "How accurate are these predictions?",
@@ -68,6 +69,10 @@ const faqItems = [
   {
     question: "Can I apply for multiple visa types simultaneously?",
     answer: "Policy varies. Generally, you can have multiple visa applications in process, but you must maintain status in one while waiting. Consult with your employer's immigration counsel before applying to multiple visa categories."
+  },
+  {
+    question: "Who are the other three visa types for?",
+    answer: "E-3 is for Australian citizens in specialty occupations. H-1B1 Singapore is for citizens of Singapore, and H-1B1 Chile is for citizens of Chile, both under free-trade visa programs. All three are employer-sponsored work routes."
   },
   {
     question: "What should I do after receiving my prediction?",
@@ -778,8 +783,9 @@ function App() {
         }
 
         const rawTypes = data.visa_types || [];
+        const datasetTypes = rawTypes.filter((item) => datasetCoveredVisaTypes.has(item.visa_type));
         const predictionTypes = rawTypes.filter((item) => item.has_direct_training_data);
-        const types = predictionTypes.length > 0 ? predictionTypes : rawTypes;
+        const types = datasetTypes.length > 0 ? datasetTypes : (predictionTypes.length > 0 ? predictionTypes : rawTypes);
         setVisaTypes(types);
 
         if (types.length > 0) {
@@ -1189,6 +1195,20 @@ function App() {
                           </p>
                         </div>
                       ) : null}
+                      <div className={`rounded-lg border px-3 py-2 text-sm ${darkMode ? "border-cyan-800/50 bg-slate-900 text-slate-300" : "border-cyan-200 bg-cyan-50/40 text-slate-700"}`}>
+                        <div className="flex items-start gap-2">
+                          <span
+                            className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold ${darkMode ? "border-cyan-700 text-cyan-300" : "border-cyan-400 text-cyan-700"}`}
+                            title="E-3 Australian: Australian citizens; H-1B1 Singapore: Singapore citizens; H-1B1 Chile: Chilean citizens."
+                            aria-label="Visa types quick info"
+                          >
+                            i
+                          </span>
+                          <p>
+                            <strong>Other work visa options:</strong> E-3 Australian (Australian citizens), H-1B1 Singapore (Singapore citizens), and H-1B1 Chile (Chilean citizens).
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </SectionCard>
