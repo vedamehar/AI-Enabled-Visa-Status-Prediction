@@ -114,6 +114,23 @@ baseline_df = master_df[baseline_columns].copy()
 # Handle tiny missing in case_status
 baseline_df['case_status'] = baseline_df['case_status'].fillna('Unknown')
 
+# Match the baseline modeling pipeline with a stricter outlier cap.
+baseline_df = baseline_df[baseline_df['processing_days'] <= 60]
+
+# Engineer model-ready temporal features for XGBoost workflow.
+baseline_df['submission_day'] = baseline_df['case_submitted'].dt.day
+baseline_df['submission_week'] = baseline_df['case_submitted'].dt.isocalendar().week.astype(int)
+baseline_df['is_peak_season'] = baseline_df['submission_month'].isin([5, 6, 7, 8]).astype(int)
+baseline_df['is_year_end'] = baseline_df['submission_month'].isin([11, 12]).astype(int)
+baseline_df['is_weekend'] = baseline_df['submission_dayofweek'].isin([5, 6]).astype(int)
+baseline_df['year_trend'] = baseline_df['case_year'] - baseline_df['case_year'].min()
+baseline_df['quarter_start'] = baseline_df['submission_month'].isin([1, 4, 7, 10]).astype(int)
+
+# Keep rows with valid target and timeline signal values.
+baseline_df = baseline_df.dropna(
+    subset=['processing_days', 'submission_month', 'submission_quarter', 'submission_dayofweek', 'case_year']
+)
+
 baseline_df.to_csv(baseline_path, index=False)
 print("baseline_model_dataset.csv created successfully ✅")
 

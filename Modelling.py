@@ -1,272 +1,140 @@
-# ==========================================================
-# AI Enabled Visa Status Prediction & Processing Time Estimator
-# Module 3: Predictive Modeling
-#
-# Milestone 3 Objectives:
-# 1. Train multiple regression models
-# 2. Evaluate using MAE, RMSE, R²
-# 3. Compare model performance
-# 4. Hyperparameter tune the best model
-# 5. Save trained models as checkpoints
-# ==========================================================
+"""
+AI Enabled Visa Status Prediction & Processing Time Estimator
+Module 3: Predictive Modeling (Tuned XGBoost)
+"""
 
-import pandas as pd
-import numpy as np
 import os
+
 import joblib
-
-from sklearn.model_selection import train_test_split, GridSearchCV
+import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from sklearn.preprocessing import LabelEncoder
+from xgboost import XGBRegressor
 
 
-# ==========================================================
-# 1️⃣ LOAD PREPROCESSED DATASET
-# ==========================================================
-
-print("\nLoading preprocessed dataset...")
+print("Loading dataset...")
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-baseline_path = os.path.join(base_dir, 'baseline_model_dataset.csv')
-models_dir = os.path.join(base_dir, 'models')
+baseline_path = os.path.join(base_dir, "baseline_model_dataset.csv")
+models_dir = os.path.join(base_dir, "models")
 
 os.makedirs(models_dir, exist_ok=True)
 
-df = pd.read_csv(baseline_path)
-
-print("Dataset Shape:", df.shape)
-
-
-# ==========================================================
-# OPTIONAL: SPEED OPTIMIZATION FOR DEVELOPMENT
-# Uncomment if training takes too long
-# ==========================================================
-
-# df = df.sample(500000, random_state=42)
-
-
-# ==========================================================
-# 2️⃣ DEFINE FEATURES AND TARGET
-# ==========================================================
-
-target = 'processing_days'
+data = pd.read_csv(baseline_path)
 
 features = [
-    'case_status',
-    'submission_month',
-    'submission_quarter',
-    'submission_dayofweek',
-    'case_year'
+    "case_status",
+    "submission_month",
+    "submission_quarter",
+    "submission_dayofweek",
+    "case_year",
+    "submission_day",
+    "submission_week",
+    "is_peak_season",
+    "is_year_end",
+    "is_weekend",
+    "year_trend",
+    "quarter_start",
 ]
 
-X = df[features]
-y = df[target]
+# Keep target/domain filters at training time as a safety check.
+data = data.dropna(subset=["processing_days", "case_status"])
+data = data[data["processing_days"] <= 60]
 
+# Preferred path: use pre-engineered columns from Preprocessing.py.
+# Fallback: build missing engineered columns if an older baseline CSV is loaded.
+missing_features = [col for col in features if col not in data.columns]
+if missing_features:
+    print(f"Baseline dataset is missing engineered features: {missing_features}")
+    print("Applying backward-compatible feature engineering in Modelling.py...")
 
-# ==========================================================
-# 3️⃣ TRAIN TEST SPLIT
-# ==========================================================
+    if "case_submitted" not in data.columns:
+        raise ValueError(
+            "baseline_model_dataset.csv is missing required columns for fallback feature engineering. "
+            "Re-run Preprocessing.py to regenerate the baseline dataset."
+        )
+
+    data["case_submitted"] = pd.to_datetime(data["case_submitted"], errors="coerce")
+    data = data.dropna(subset=["case_submitted", "submission_month", "submission_quarter", "submission_dayofweek", "case_year"])
+
+    if "submission_day" not in data.columns:
+        data["submission_day"] = data["case_submitted"].dt.day
+    if "submission_week" not in data.columns:
+        data["submission_week"] = data["case_submitted"].dt.isocalendar().week.astype(int)
+    if "is_peak_season" not in data.columns:
+        data["is_peak_season"] = data["submission_month"].isin([5, 6, 7, 8]).astype(int)
+    if "is_year_end" not in data.columns:
+        data["is_year_end"] = data["submission_month"].isin([11, 12]).astype(int)
+    if "is_weekend" not in data.columns:
+        data["is_weekend"] = data["submission_dayofweek"].isin([5, 6]).astype(int)
+    if "year_trend" not in data.columns:
+        data["year_trend"] = data["case_year"] - data["case_year"].min()
+    if "quarter_start" not in data.columns:
+        data["quarter_start"] = data["submission_month"].isin([1, 4, 7, 10]).astype(int)
+
+# Encode case_status.
+label_encoder = LabelEncoder()
+data["case_status"] = label_encoder.fit_transform(data["case_status"])
+
+# Persist encoder to reuse the exact mapping during inference.
+encoder_path = os.path.join(models_dir, "case_status_encoder.pkl")
+joblib.dump(label_encoder, encoder_path)
+
+X = data[features]
+y = data["processing_days"]
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
     test_size=0.2,
-    random_state=42
+    random_state=42,
 )
 
-print("Training Samples:", X_train.shape)
-print("Testing Samples:", X_test.shape)
+print("Starting hyperparameter tuning...")
 
-
-# ==========================================================
-# 4️⃣ PREPROCESSING PIPELINE
-# ==========================================================
-
-categorical_features = ['case_status']
-
-numeric_features = [
-    'submission_month',
-    'submission_quarter',
-    'submission_dayofweek',
-    'case_year'
-]
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
-        ('num', 'passthrough', numeric_features)
-    ]
-)
-
-
-# ==========================================================
-# 5️⃣ DEFINE MODELS
-# ==========================================================
-
-models = {
-
-    "Linear Regression": LinearRegression(),
-
-    "Random Forest": RandomForestRegressor(
-        n_estimators=100,
-        random_state=42,
-        n_jobs=-1
-    ),
-
-    "Gradient Boosting": GradientBoostingRegressor(
-        random_state=42
-    )
+param_dist = {
+    "n_estimators": [200, 300, 400],
+    "max_depth": [6, 8, 10, 12],
+    "learning_rate": [0.03, 0.05, 0.07, 0.1],
+    "subsample": [0.7, 0.8, 0.9],
+    "colsample_bytree": [0.7, 0.8, 0.9],
+    "gamma": [0, 0.1, 0.2],
+    "min_child_weight": [1, 3, 5],
 }
 
+xgb = XGBRegressor(random_state=42, n_jobs=-1)
 
-# ==========================================================
-# 6️⃣ TRAIN & EVALUATE MODELS (WITH CHECKPOINTS)
-# ==========================================================
+random_search = RandomizedSearchCV(
+    estimator=xgb,
+    param_distributions=param_dist,
+    n_iter=20,
+    scoring="r2",
+    cv=3,
+    verbose=2,
+    random_state=42,
+    n_jobs=-1,
+)
 
-print("\nTraining Models...")
+random_search.fit(X_train, y_train)
 
-results = []
+print("Best Parameters:", random_search.best_params_)
 
-for name, model in models.items():
+best_model = random_search.best_estimator_
+y_pred = best_model.predict(X_test)
 
-    model_file = os.path.join(models_dir, f"{name.replace(' ','_')}_model.pkl")
+mae = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
 
-    if os.path.exists(model_file):
+print("\n===== Tuned XGBoost Performance =====")
+print("MAE:", round(mae, 2))
+print("RMSE:", round(rmse, 2))
+print("R2 Score:", round(r2, 2))
+print("Model Accuracy:", round(r2 * 100, 2), "%")
 
-        print(f"\nLoading saved model: {name}")
-        pipeline = joblib.load(model_file)
-
-    else:
-
-        print(f"\nTraining model: {name}")
-
-        pipeline = Pipeline([
-            ('preprocessor', preprocessor),
-            ('model', model)
-        ])
-
-        pipeline.fit(X_train, y_train)
-
-        joblib.dump(pipeline, model_file)
-
-        print("Model checkpoint saved:", model_file)
-
-    predictions = pipeline.predict(X_test)
-
-    mae = mean_absolute_error(y_test, predictions)
-    rmse = np.sqrt(mean_squared_error(y_test, predictions))
-    r2 = r2_score(y_test, predictions)
-
-    results.append({
-        "Model": name,
-        "MAE": mae,
-        "RMSE": rmse,
-        "R2": r2
-    })
-
-    print(name)
-    print("MAE :", mae)
-    print("RMSE:", rmse)
-    print("R2  :", r2)
-    print("-" * 40)
-
-
-# ==========================================================
-# 7️⃣ MODEL COMPARISON
-# ==========================================================
-
-results_df = pd.DataFrame(results)
-
-results_file = os.path.join(models_dir, "model_results.csv")
-
-print("\nModel Comparison Results:")
-print(results_df)
-
-results_df.to_csv(results_file, index=False)
-
-print("Model comparison saved to", results_file)
-
-
-# ==========================================================
-# 8️⃣ HYPERPARAMETER TUNING (RANDOM FOREST)
-# ==========================================================
-
-print("\nStarting Hyperparameter Tuning...")
-
-tuned_model_file = os.path.join(models_dir, "best_random_forest.pkl")
-
-if os.path.exists(tuned_model_file):
-
-    print("Loading tuned model...")
-    best_model = joblib.load(tuned_model_file)
-
-else:
-
-    rf_pipeline = Pipeline([
-        ('preprocessor', preprocessor),
-        ('model', RandomForestRegressor(random_state=42))
-    ])
-
-    param_grid = {
-
-        'model__n_estimators': [100, 200],
-
-        'model__max_depth': [10, 20, None],
-
-        'model__min_samples_split': [2, 5]
-
-    }
-
-    grid_search = GridSearchCV(
-        rf_pipeline,
-        param_grid,
-        cv=3,
-        scoring='neg_mean_absolute_error',
-        n_jobs=-1,
-        verbose=2
-    )
-
-    grid_search.fit(X_train, y_train)
-
-    best_model = grid_search.best_estimator_
-
-    joblib.dump(best_model, tuned_model_file)
-
-    print("Best Parameters:", grid_search.best_params_)
-
-
-# ==========================================================
-# 9️⃣ FINAL MODEL EVALUATION
-# ==========================================================
-
-final_preds = best_model.predict(X_test)
-
-mae = mean_absolute_error(y_test, final_preds)
-rmse = np.sqrt(mean_squared_error(y_test, final_preds))
-r2 = r2_score(y_test, final_preds)
-
-print("\nFinal Tuned Model Performance")
-
-print("MAE :", mae)
-print("RMSE:", rmse)
-print("R2  :", r2)
-
-
-# ==========================================================
-# 🔟 SAVE FINAL MODEL
-# ==========================================================
-
-final_model_file = os.path.join(models_dir, "visa_processing_model.pkl")
-
-joblib.dump(best_model, final_model_file)
-
-print("\nFinal model saved:", final_model_file)
-
-
-print("\nModule 3 Completed Successfully 🚀")
+model_path = os.path.join(models_dir, "visa_processing_model_xgb_tuned.pkl")
+joblib.dump(best_model, model_path)
+print("Tuned model saved successfully:", model_path)
+print("Case-status encoder saved successfully:", encoder_path)

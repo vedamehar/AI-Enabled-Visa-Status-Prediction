@@ -277,7 +277,7 @@ def round_up_prediction_values(prediction, lower, upper, margin):
 
 
 def load_visa_types_from_data():
-    """Discover visa types from datasets and include guidance-defined visa types."""
+    """Discover visa types directly from available datasets."""
     dataset_candidates = [
         os.path.join(os.path.dirname(__file__), 'master_h1b_full_dataset.csv'),
         os.path.join(os.path.dirname(__file__), 'rich_excel_dataset.csv'),
@@ -293,10 +293,6 @@ def load_visa_types_from_data():
             discovered.update(v for v in values if v)
         except Exception:
             continue
-
-    # Always include guidance-defined visa types so recommendation options
-    # like F-1/L-1 remain available even if absent in the model dataset.
-    discovered.update(VISA_GUIDANCE.keys())
 
     return sorted(discovered)
 
@@ -327,6 +323,51 @@ AVAILABLE_VISA_TYPES = load_visa_types_from_data()
 if 'H-1B' not in AVAILABLE_VISA_TYPES:
     AVAILABLE_VISA_TYPES = ['H-1B'] + AVAILABLE_VISA_TYPES
 
+# LCA is relevant for these specialty work-visa paths in current model scope.
+LCA_REQUIRED_VISA_TYPES = {'H-1B', 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'}
+
+
+def get_visa_prediction_coverage(visa_type):
+    """Describe how a visa type is handled by the current model stack."""
+    if APPROACH == 'dual':
+        if visa_type in visa_specific_models:
+            return {
+                "coverage_mode": "direct_visa_specific",
+                "has_direct_training_data": True,
+                "mapped_fallback": False,
+                "mapped_to": None,
+                "coverage_note": f"{visa_type} uses a dedicated visa-specific model trained on historical records for this visa class."
+            }
+
+        visa_classes = set()
+        if visa_encoders is not None and 'visa_class' in visa_encoders:
+            visa_classes = set(visa_encoders['visa_class'].classes_)
+
+        if visa_type in visa_classes:
+            return {
+                "coverage_mode": "ensemble_trained",
+                "has_direct_training_data": True,
+                "mapped_fallback": False,
+                "mapped_to": None,
+                "coverage_note": f"{visa_type} is handled by the ensemble model with visa class encoding learned from training data."
+            }
+
+        return {
+            "coverage_mode": "mapped_fallback",
+            "has_direct_training_data": False,
+            "mapped_fallback": True,
+            "mapped_to": "H-1B",
+            "coverage_note": f"{visa_type} has no direct training rows in the model dataset. Prediction uses mapped fallback behavior via H-1B encoding in ensemble mode; treat as directional guidance."
+        }
+
+    return {
+        "coverage_mode": "legacy_h1b",
+        "has_direct_training_data": (visa_type == 'H-1B'),
+        "mapped_fallback": (visa_type != 'H-1B'),
+        "mapped_to": "H-1B" if visa_type != 'H-1B' else None,
+        "coverage_note": "Legacy model is H-1B oriented; non-H-1B selections are directional only."
+    }
+
 
 def predict_processing_time(case_status, submission_month, submission_quarter,
                            submission_dayofweek, case_year,
@@ -350,11 +391,15 @@ def predict_processing_time(case_status, submission_month, submission_quarter,
         
         encoded_case_status = int(visa_encoders['case_status'].transform([case_status])[0])
         
-        # Try to encode visa_type, fallback to ensemble if unavailable
+        # Try to encode visa_type, fallback to H-1B encoding if unavailable.
+        mapped_fallback = False
+        effective_visa_class = visa_type
         try:
             encoded_visa_class = int(visa_encoders['visa_class'].transform([visa_type])[0])
         except:
             encoded_visa_class = int(visa_encoders['visa_class'].transform(['H-1B'])[0])
+            mapped_fallback = True
+            effective_visa_class = 'H-1B'
         
         # Build feature dataframe (without visa_class for specific models)
         base_features = pd.DataFrame({
@@ -420,7 +465,9 @@ def predict_processing_time(case_status, submission_month, submission_quarter,
             "raw_range_max": round(float(upper), 4),
             "raw_confidence_margin": round(float(margin), 4),
             "model_source": model_source,
-            "confidence_level": confidence_level
+            "confidence_level": confidence_level,
+            "mapped_fallback": mapped_fallback,
+            "effective_visa_class": effective_visa_class
         }
     
     else:
@@ -506,10 +553,16 @@ def api_visa_types():
     visa_types = []
     for visa_type in AVAILABLE_VISA_TYPES:
         guidance = get_visa_guidance(visa_type)
+        coverage = get_visa_prediction_coverage(visa_type)
         visa_types.append({
             "visa_type": visa_type,
             "summary": guidance["summary"],
             "prediction_supported": guidance["prediction_supported"],
+            "coverage_mode": coverage["coverage_mode"],
+            "has_direct_training_data": coverage["has_direct_training_data"],
+            "mapped_fallback": coverage["mapped_fallback"],
+            "mapped_to": coverage["mapped_to"],
+            "coverage_note": coverage["coverage_note"],
         })
 
     return jsonify({
@@ -529,12 +582,18 @@ def api_visa_guidance():
         return jsonify({"error": f"Unsupported visa_type: {visa_type}"}), 400
 
     guidance = get_visa_guidance(visa_type)
+    coverage = get_visa_prediction_coverage(visa_type)
     return jsonify({
         "visa_type": visa_type,
         "summary": guidance["summary"],
         "eligibility": guidance["eligibility"],
         "documents": guidance["documents"],
         "prediction_supported": guidance["prediction_supported"],
+        "coverage_mode": coverage["coverage_mode"],
+        "has_direct_training_data": coverage["has_direct_training_data"],
+        "mapped_fallback": coverage["mapped_fallback"],
+        "mapped_to": coverage["mapped_to"],
+        "coverage_note": coverage["coverage_note"],
     })
 
 
@@ -563,14 +622,33 @@ def api_predict():
             return jsonify({"error": "Day of week must be between 0 and 6"}), 400
         if not (MIN_CASE_YEAR <= case_year <= CURRENT_YEAR):
             return jsonify({"error": f"Year must be between {MIN_CASE_YEAR} and {CURRENT_YEAR}"}), 400
-        if case_status not in CASE_STATUSES:
-            return jsonify({"error": f"Invalid case status. Must be one of: {', '.join(CASE_STATUSES)}"}), 400
         if submission_day is not None and not (1 <= int(submission_day) <= 31):
             return jsonify({"error": "submission_day must be between 1 and 31"}), 400
         if submission_week is not None and not (1 <= int(submission_week) <= 53):
             return jsonify({"error": "submission_week must be between 1 and 53"}), 400
         if visa_type not in AVAILABLE_VISA_TYPES:
             return jsonify({"error": f"Invalid visa_type. Must be one of: {', '.join(AVAILABLE_VISA_TYPES)}"}), 400
+
+        coverage = get_visa_prediction_coverage(visa_type)
+
+        # Block predictions for visa types without direct training coverage.
+        if not coverage.get('has_direct_training_data', False):
+            return jsonify({
+                "error": (
+                    f"Prediction is disabled for {visa_type} because no direct training dataset rows were found for this visa type. "
+                    "Guidance/checklist remains available."
+                ),
+                "coverage_mode": coverage.get('coverage_mode'),
+                "coverage_note": coverage.get('coverage_note'),
+                "prediction_enabled": False
+            }), 400
+
+        # LCA status is mandatory only for LCA-based work visa prediction flow.
+        if visa_type in LCA_REQUIRED_VISA_TYPES:
+            if case_status not in CASE_STATUSES:
+                return jsonify({"error": f"Invalid case status. Must be one of: {', '.join(CASE_STATUSES)}"}), 400
+        elif case_status and case_status not in CASE_STATUSES:
+            return jsonify({"error": f"Invalid case status. Must be one of: {', '.join(CASE_STATUSES)}"}), 400
         
         # Make prediction (now passes visa_type)
         result = predict_processing_time(case_status, submission_month, submission_quarter,
@@ -580,6 +658,7 @@ def api_predict():
                                         visa_type=visa_type)
 
         guidance = get_visa_guidance(visa_type)
+        coverage = get_visa_prediction_coverage(visa_type)
         
         # Build scope note based on model source
         model_source = result.get('model_source', 'unknown')
@@ -594,6 +673,12 @@ def api_predict():
         
         if confidence_level == 'medium':
             scope_note += " [Note: Medium confidence due to smaller dataset or lower model accuracy]"
+
+        if result.get('mapped_fallback'):
+            scope_note += (
+                f" [Important: {visa_type} is not directly represented in model training rows. "
+                f"Prediction used mapped fallback to {result.get('effective_visa_class', 'H-1B')} encoding and should be treated as directional guidance.]"
+            )
         
         return jsonify({
             "success": True,
@@ -602,7 +687,12 @@ def api_predict():
             "prediction_supported": guidance["prediction_supported"],
             "model_source": model_source,
             "confidence_level": confidence_level,
-            "scope_note": scope_note
+            "scope_note": scope_note,
+            "coverage_mode": coverage["coverage_mode"],
+            "has_direct_training_data": coverage["has_direct_training_data"],
+            "mapped_fallback": coverage["mapped_fallback"],
+            "mapped_to": coverage["mapped_to"],
+            "coverage_note": coverage["coverage_note"],
         })
     
     except Exception as e:

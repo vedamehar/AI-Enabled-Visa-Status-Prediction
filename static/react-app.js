@@ -33,15 +33,15 @@ const dayOptions = [
   { value: 6, label: "Sunday" },
 ];
 
-const caseStatusOptions = ["CERTIFIED", "DENIED", "WITHDRAWN", "PENDING_REVIEW"];
+const caseStatusOptions = [
+  { value: "CERTIFIED", label: "Approved" },
+  { value: "DENIED", label: "Not Approved" },
+];
+const lcaRequiredVisaTypes = new Set(["H-1B", "E-3 Australian", "H-1B1 Singapore", "H-1B1 Chile"]);
 
 const purposeOptions = [
   { value: "", label: "Select purpose" },
-  { value: "work", label: "Work in the U.S." },
-  { value: "study", label: "Study in the U.S." },
-  { value: "visit", label: "Short visit / tourism / business visit" },
-  { value: "transfer", label: "Internal transfer from foreign office" },
-  { value: "extraordinary", label: "Extraordinary ability career path" },
+  { value: "work", label: "Specialty occupation work in the U.S." },
 ];
 
 const heroImageSrc = "/static/images/visa-hero.svg";
@@ -58,12 +58,12 @@ const faqItems = [
     answer: "Our model is trained on historical visa processing data and is strongest for H-1B cases (R² ~0.56). For other visa types, the prediction is directional and should be supplemented with official USCIS processing time estimates. Actual times vary based on case complexity and administrative workload."
   },
   {
-    question: "What does 'case status: CERTIFIED' mean?",
-    answer: "CERTIFIED means the Labor Condition Application (LCA) was approved. DENIED indicates LCA was rejected. WITHDRAWN means the case was voluntarily withdrawn. PENDING_REVIEW means the case is under initial review."
+    question: "What does the LCA status mean in this form?",
+    answer: "LCA (Labor Condition Application) is an employer filing step for work-visa processing. In this form we keep it simple for applicants: Approved means the LCA was certified, and Not Approved means it was rejected or not approved yet."
   },
   {
     question: "Which visa type is easiest to get?",
-    answer: "No single visa is 'easiest'—it depends on your situation. B-1/B-2 is common for visits, F-1 for students with school admission, L-1 for internal transfers, and H-1B1 for nationals of Chile or Singapore. Consult an immigration attorney for personalized guidance."
+    answer: "There is no universal 'easiest' route. Eligibility depends on your profile, job offer, nationality, and legal criteria. This tool currently models dataset-covered work-visa classes only; consult official USCIS guidance and legal counsel for case-specific decisions."
   },
   {
     question: "Can I apply for multiple visa types simultaneously?",
@@ -96,11 +96,7 @@ const resourcesList = [
 // Visa Comparison Data
 const visaComparisonData = [
   { type: "H-1B", purpose: "Specialty Occupation Work", sponsorRequired: true, avgDays: "120-210", difficulty: "Medium" },
-  { type: "F-1", purpose: "Student", sponsorRequired: false, avgDays: "30-90", difficulty: "Low" },
-  { type: "L-1", purpose: "Intra-company Transfer", sponsorRequired: true, avgDays: "60-120", difficulty: "Medium" },
-  { type: "B-1/B-2", purpose: "Business/Tourism Visit", sponsorRequired: false, avgDays: "14-30", difficulty: "Low" },
-  { type: "O-1", purpose: "Extraordinary Ability", sponsorRequired: true, avgDays: "90-180", difficulty: "High" },
-  { type: "E-3", purpose: "Australian Specialty Worker", sponsorRequired: true, avgDays: "90-150", difficulty: "Medium" },
+  { type: "E-3 Australian", purpose: "Australian Specialty Worker", sponsorRequired: true, avgDays: "90-150", difficulty: "Medium" },
   { type: "H-1B1 Singapore", purpose: "Singapore Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
   { type: "H-1B1 Chile", purpose: "Chile Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
 ];
@@ -537,9 +533,9 @@ function StatisticsDashboard({ darkMode = false }) {
         </div>
         
         <div className={`rounded-xl border p-5 ${darkMode ? "border-orange-900/50 bg-gradient-to-br from-orange-900/25 to-red-900/20" : "border-orange-200 bg-gradient-to-br from-orange-50 to-red-50"}`}>
-          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-orange-300" : "text-orange-700"}`}>Fastest Visa Type</p>
-          <p className="text-3xl font-bold text-orange-900 mt-2">B-1/B-2</p>
-          <p className={`text-sm mt-1 ${darkMode ? "text-orange-200" : "text-orange-700"}`}>14-30 days typical range</p>
+          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-orange-300" : "text-orange-700"}`}>Fastest In Dataset</p>
+          <p className="text-3xl font-bold text-orange-900 mt-2">H-1B1</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-orange-200" : "text-orange-700"}`}>60-120 days typical range</p>
         </div>
         
         <div className={`rounded-xl border p-5 ${darkMode ? "border-green-900/50 bg-gradient-to-br from-green-900/25 to-emerald-900/20" : "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"}`}>
@@ -550,7 +546,7 @@ function StatisticsDashboard({ darkMode = false }) {
       </div>
 
       <div className={`rounded-xl border p-5 space-y-4 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
-        <h3 className={`font-semibold text-lg ${darkMode ? "text-slate-100" : "text-slate-800"}`}>Processing Time Ranges by Category</h3>
+        <h3 className={`font-semibold text-lg ${darkMode ? "text-slate-100" : "text-slate-800"}`}>Processing Time Ranges (Dataset-Covered Visas)</h3>
         
         <div className="space-y-3">
           <div>
@@ -565,17 +561,17 @@ function StatisticsDashboard({ darkMode = false }) {
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>O-1 (Extraordinary)</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>90-180 days</span>
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>E-3 Australian</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>90-150 days</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-2/3 bg-gradient-to-r from-sunrise to-orange-400 rounded-full"></div>
+              <div className="h-full w-3/5 bg-gradient-to-r from-sunrise to-orange-400 rounded-full"></div>
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>L-1 (Transfer)</span>
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B1 Singapore</span>
               <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>60-120 days</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -585,11 +581,11 @@ function StatisticsDashboard({ darkMode = false }) {
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>F-1 (Student)</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>30-90 days</span>
+              <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B1 Chile</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>60-120 days</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-1/3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full"></div>
+              <div className="h-full w-2/5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full"></div>
             </div>
           </div>
         </div>
@@ -682,40 +678,26 @@ function buildRecommendation(profile, availableTypes) {
     }
   };
 
-  if (profile.purpose === "study") {
-    add("F-1", 9);
-  }
-  if (profile.purpose === "visit") {
-    add("B-1/B-2", 9);
-  }
   if (profile.purpose === "work") {
     add("H-1B", 7);
-    add("O-1", 4);
-  }
-  if (profile.purpose === "transfer") {
-    add("L-1", 9);
-  }
-  if (profile.purpose === "extraordinary") {
-    add("O-1", 10);
-    add("H-1B", 2);
+    add("E-3 Australian", 5);
+    add("H-1B1 Singapore", 5);
+    add("H-1B1 Chile", 5);
   }
 
   if (profile.hasSponsor === "yes") {
     add("H-1B", 3);
-    add("L-1", 2);
-    add("O-1", 2);
+    add("E-3 Australian", 2);
+    add("H-1B1 Singapore", 2);
+    add("H-1B1 Chile", 2);
   }
   if (profile.hasSponsor === "no") {
-    add("B-1/B-2", 2);
-    add("F-1", 2);
+    // Dataset-covered visa classes are employer-sponsored work visas.
+    // Keep scores unchanged to avoid suggesting unsupported categories.
   }
 
   if (profile.internalTransfer === "yes") {
-    add("L-1", 6);
-  }
-
-  if (profile.hasSchoolAdmission === "yes") {
-    add("F-1", 5);
+    add("H-1B", 1);
   }
 
   const ranking = Object.entries(scores)
@@ -779,6 +761,13 @@ function App() {
   });
   const [recommendations, setRecommendations] = useState([]);
 
+  const selectedVisaMeta = useMemo(
+    () => visaTypes.find((item) => item.visa_type === selectedVisaType) || null,
+    [visaTypes, selectedVisaType]
+  );
+  const canPredictSelectedVisa = Boolean(selectedVisaMeta?.has_direct_training_data);
+  const requiresLcaStatus = lcaRequiredVisaTypes.has(selectedVisaType);
+
   useEffect(() => {
     async function loadVisaTypes() {
       try {
@@ -788,7 +777,9 @@ function App() {
           throw new Error(data.error || "Unable to load visa types");
         }
 
-        const types = data.visa_types || [];
+        const rawTypes = data.visa_types || [];
+        const predictionTypes = rawTypes.filter((item) => item.has_direct_training_data);
+        const types = predictionTypes.length > 0 ? predictionTypes : rawTypes;
         setVisaTypes(types);
 
         if (types.length > 0) {
@@ -837,8 +828,20 @@ function App() {
   }
 
   function validateForm() {
+    if (!canPredictSelectedVisa) {
+      setApiError(
+        `${selectedVisaType} does not have direct training dataset coverage for prediction. Use guidance/checklists and official USCIS timelines.`
+      );
+      return false;
+    }
+
     const nextErrors = {};
-    Object.keys(formData).forEach((key) => {
+    const requiredKeys = ["submission_month", "submission_quarter", "submission_dayofweek", "case_year"];
+    if (requiresLcaStatus) {
+      requiredKeys.unshift("case_status");
+    }
+
+    requiredKeys.forEach((key) => {
       if (!String(formData[key]).trim()) {
         nextErrors[key] = "This field is required";
       }
@@ -870,7 +873,7 @@ function App() {
     try {
       const payload = {
         visa_type: selectedVisaType,
-        case_status: formData.case_status,
+        case_status: requiresLcaStatus ? formData.case_status : "CERTIFIED",
         submission_month: Number(formData.submission_month),
         submission_quarter: Number(formData.submission_quarter),
         submission_dayofweek: Number(formData.submission_dayofweek),
@@ -1178,6 +1181,14 @@ function App() {
                           {visaTypes.find((item) => item.visa_type === selectedVisaType)?.summary || ""}
                         </p>
                       ) : null}
+                      {visaTypes.length > 0 ? (
+                        <div className={`rounded-lg border px-3 py-2 text-sm ${darkMode ? "border-slate-700 bg-slate-800 text-slate-300" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                          <p className="font-medium">Model Coverage</p>
+                          <p className="mt-1">
+                            {visaTypes.find((item) => item.visa_type === selectedVisaType)?.coverage_note || "Coverage details unavailable for this visa type."}
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </SectionCard>
@@ -1201,17 +1212,37 @@ function App() {
 
               <div className="space-y-6 lg:col-span-7">
                 <SectionCard title="Processing Estimator" subtitle="Enter your timeline signals and generate a prediction range." icon="◆" tone="ink" darkMode={darkMode}>
+                  {!canPredictSelectedVisa ? (
+                    <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${darkMode ? "border-amber-700/40 bg-amber-900/20 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                      Prediction is currently disabled for <strong>{selectedVisaType}</strong> because this visa type does not have direct training dataset rows in the current model.
+                      You can still use eligibility/document guidance and official USCIS timelines.
+                    </div>
+                  ) : null}
                   <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+                    {requiresLcaStatus ? (
                     <div className="sm:col-span-2">
-                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Case Status</label>
+                      <div className="mb-2 flex items-center gap-2">
+                        <label className={`block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Labor Condition Application (LCA) Status</label>
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold ${darkMode ? "border-slate-500 text-slate-300" : "border-slate-400 text-slate-600"}`}
+                          title="LCA is the employer labor filing step for specialty-work visas. Select Approved if the LCA is certified; otherwise choose Not Approved."
+                          aria-label="LCA info"
+                        >
+                          i
+                        </span>
+                      </div>
                       <select value={formData.case_status} onChange={(e) => updateField("case_status", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
-                        <option value="">Select status</option>
+                        <option value="">Select LCA status</option>
                         {caseStatusOptions.map((status) => (
-                          <option key={status} value={status}>{status}</option>
+                          <option key={status.value} value={status.value}>{status.label}</option>
                         ))}
                       </select>
+                      <p className={`mt-2 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        You no longer need to choose internal workflow statuses like Withdrawn or Pending Review.
+                      </p>
                       {errors.case_status ? <p className="mt-1 text-sm text-red-600">{errors.case_status}</p> : null}
                     </div>
+                    ) : null}
                     <div>
                       <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Submission Month</label>
                       <select value={formData.submission_month} onChange={(e) => updateField("submission_month", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
@@ -1253,7 +1284,7 @@ function App() {
                       {errors.case_year ? <p className="mt-1 text-sm text-red-600">{errors.case_year}</p> : null}
                     </div>
                     <div className="sm:col-span-2 mt-2 flex flex-wrap gap-3">
-                      <button type="submit" disabled={isSubmitting} className="rounded-lg bg-ink px-5 py-3 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="submit" disabled={isSubmitting || !canPredictSelectedVisa} className="rounded-lg bg-ink px-5 py-3 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
                         {isSubmitting ? "Estimating..." : "Generate Estimate"}
                       </button>
                       <button
@@ -1310,6 +1341,12 @@ function App() {
                         prediction={prediction}
                         darkMode={darkMode}
                       />
+                      <div className={`rounded-xl border p-4 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
+                        <p className={`text-sm font-semibold uppercase tracking-wide ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Transparency Note</p>
+                        <p className={`mt-2 text-sm ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                          {prediction.scope_note || prediction.coverage_note || "This estimate is generated from available historical model coverage."}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </SectionCard>
