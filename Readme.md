@@ -18,10 +18,12 @@ By analyzing temporal patterns, case status, and structural attributes, the syst
 1. **H-1B_Disclosure_Data_FY2018_EOY.xlsx**
    - Download: https://www.kaggle.com/datasets/auygur/h1b-dataset-2017-2018
    - Place in: `raw datasets/` folder
+   - Rows: **654,360**
 
 2. **h1b_data.csv**
    - Download: https://www.kaggle.com/datasets/thedevastator/h-1b-non-immigrant-labour-visa
    - Place in: `raw datasets/` folder
+   - Rows: **3,360,810**
 
 ### Processed Datasets
 
@@ -30,6 +32,13 @@ The following preprocessed datasets are available on Kaggle:
 - **baseline_model_dataset.csv** (~101 MB)
 - **master_h1b_full_dataset.csv** (~1.05 GB)
 - **rich_excel_dataset.csv** (~252 MB)
+
+Row counts (processed):
+
+- **baseline_model_dataset.csv**: **3,850,295** rows
+- **master_h1b_full_dataset.csv**: **3,850,295** rows
+- **rich_excel_dataset.csv**: **625,916** rows
+- **Final_master_h1b_dataset.csv**: **4,015,169** rows
 
 Download from Assets section in the releases section in this repo or you can run the code and generate of your own processed datasets and place in: `processed dataset/` folder
 
@@ -154,6 +163,8 @@ These capture seasonal and temporal trends.
 
 Primary modeling dataset.
 
+Rows: **3,850,295**
+
 Contains:
 - case_status
 - processing_days
@@ -176,6 +187,8 @@ Advantages:
 
 Extended dataset with structural attributes:
 
+Rows: **625,916**
+
 - Employer name
 - Wage details
 - Worksite state
@@ -191,6 +204,8 @@ Used for:
 ## 3️⃣ master_h1b_full_dataset.csv
 
 Combined large-scale dataset (~3.8M rows).
+
+Rows: **3,850,295**
 
 Used for:
 - Scalability testing
