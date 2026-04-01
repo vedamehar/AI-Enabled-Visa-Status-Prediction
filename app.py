@@ -294,6 +294,11 @@ def load_visa_types_from_data():
         except Exception:
             continue
 
+    # Always keep the core work-visa classes available in API responses.
+    # This prevents UI collapse to a single type when partial datasets/artifacts
+    # are present in an environment.
+    discovered.update({'H-1B', 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'})
+
     return sorted(discovered)
 
 
@@ -320,8 +325,7 @@ def get_visa_guidance(visa_type):
 
 
 AVAILABLE_VISA_TYPES = load_visa_types_from_data()
-if 'H-1B' not in AVAILABLE_VISA_TYPES:
-    AVAILABLE_VISA_TYPES = ['H-1B'] + AVAILABLE_VISA_TYPES
+
 
 # LCA is relevant for these specialty work-visa paths in current model scope.
 LCA_REQUIRED_VISA_TYPES = {'H-1B', 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'}
