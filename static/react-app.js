@@ -692,6 +692,23 @@ function buildRecommendation(profile, availableTypes) {
     }
   };
 
+  // Nationality-based eligibility filtering
+  const nationalityEligibility = {
+    "H-1B": ["United States", "Australia", "Singapore", "Chile", "Other Foreign National"],
+    "E-3 Australian": ["Australia", "Other Foreign National"],
+    "H-1B1 Singapore": ["Singapore", "Other Foreign National"],
+    "H-1B1 Chile": ["Chile", "Other Foreign National"],
+  };
+
+  // Apply nationality restrictions
+  if (profile.nationality) {
+    for (const [visaType, eligibleNationalities] of Object.entries(nationalityEligibility)) {
+      if (!eligibleNationalities.includes(profile.nationality)) {
+        scores[visaType] = -999; // Mark as ineligible
+      }
+    }
+  }
+
   if (profile.purpose === "work") {
     add("H-1B", 7);
     add("E-3 Australian", 5);
@@ -769,6 +786,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prediction, setPrediction] = useState(null);
   const [profile, setProfile] = useState({
+    nationality: "",
     purpose: "",
     hasSponsor: "",
     internalTransfer: "",
@@ -1129,8 +1147,16 @@ function App() {
           {tab === "predictor" && (
             <div className="grid gap-6 lg:grid-cols-12 animate-in fade-in duration-500">
               <div className="space-y-6 lg:col-span-5">
-                <SectionCard title="Which Visa Type Fits You?" subtitle="Answer 4 quick questions for a guided visa type suggestion." icon="●" tone="orange" darkMode={darkMode}>
+                <SectionCard title="Which Visa Type Fits You?" subtitle="Answer 5 quick questions for a guided visa type suggestion." icon="●" tone="orange" darkMode={darkMode}>
                   <div className="space-y-3">
+                    <div>
+                      <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Your Citizenship / Nationality</label>
+                      <select value={profile.nationality} onChange={(e) => setProfile((prev) => ({ ...prev, nationality: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        {nationalityOptions.map((nat) => (
+                          <option key={nat.value} value={nat.value}>{nat.label}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className={`mb-2 block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Primary Goal</label>
                       <select value={profile.purpose} onChange={(e) => setProfile((prev) => ({ ...prev, purpose: e.target.value }))} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
