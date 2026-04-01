@@ -100,10 +100,10 @@ const resourcesList = [
 
 // Visa Comparison Data
 const visaComparisonData = [
-  { type: "H-1B", purpose: "Specialty Occupation Work", sponsorRequired: true, avgDays: "120-210", difficulty: "Medium" },
-  { type: "E-3 Australian", purpose: "Australian Specialty Worker", sponsorRequired: true, avgDays: "90-150", difficulty: "Medium" },
-  { type: "H-1B1 Singapore", purpose: "Singapore Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
-  { type: "H-1B1 Chile", purpose: "Chile Specialty Worker", sponsorRequired: true, avgDays: "60-120", difficulty: "Low" },
+  { type: "H-1B", purpose: "Specialty Occupation Work", sponsorRequired: true, avgDays: "11.3 avg (P10-P90: 4-7)", difficulty: "Medium" },
+  { type: "E-3 Australian", purpose: "Australian Specialty Worker", sponsorRequired: true, avgDays: "10.9 avg (P10-P90: 4-7)", difficulty: "Medium" },
+  { type: "H-1B1 Singapore", purpose: "Singapore Specialty Worker", sponsorRequired: true, avgDays: "14.1 avg (P10-P90: 4-7)", difficulty: "Low" },
+  { type: "H-1B1 Chile", purpose: "Chile Specialty Worker", sponsorRequired: true, avgDays: "8.9 avg (P10-P90: 4-7)", difficulty: "Low" },
 ];
 
 // Component for authentic data-driven predictions visualization
@@ -533,20 +533,20 @@ function StatisticsDashboard({ darkMode = false }) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className={`rounded-xl border p-5 ${darkMode ? "border-cyan-900/50 bg-gradient-to-br from-cyan-900/25 to-blue-900/20" : "border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50"}`}>
           <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-cyan-300" : "text-cyan-700"}`}>Avg Processing Time</p>
-          <p className="text-3xl font-bold text-cyan-900 mt-2">120 days</p>
-          <p className={`text-sm mt-1 ${darkMode ? "text-cyan-200" : "text-cyan-700"}`}>H-1B baseline average</p>
+          <p className="text-3xl font-bold text-cyan-900 mt-2">11.3 days</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-cyan-200" : "text-cyan-700"}`}>Mean for H-1B rows in dataset</p>
         </div>
         
         <div className={`rounded-xl border p-5 ${darkMode ? "border-orange-900/50 bg-gradient-to-br from-orange-900/25 to-red-900/20" : "border-orange-200 bg-gradient-to-br from-orange-50 to-red-50"}`}>
-          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-orange-300" : "text-orange-700"}`}>Fastest In Dataset</p>
-          <p className="text-3xl font-bold text-orange-900 mt-2">H-1B1</p>
-          <p className={`text-sm mt-1 ${darkMode ? "text-orange-200" : "text-orange-700"}`}>60-120 days typical range</p>
+          <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-orange-300" : "text-orange-700"}`}>Fastest Mean</p>
+          <p className="text-3xl font-bold text-orange-900 mt-2">H-1B1 Chile</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-orange-200" : "text-orange-700"}`}>8.9 days average</p>
         </div>
         
         <div className={`rounded-xl border p-5 ${darkMode ? "border-green-900/50 bg-gradient-to-br from-green-900/25 to-emerald-900/20" : "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50"}`}>
           <p className={`text-sm uppercase tracking-wide font-semibold ${darkMode ? "text-green-300" : "text-green-700"}`}>Most Common</p>
           <p className="text-3xl font-bold text-green-900 mt-2">H-1B</p>
-          <p className={`text-sm mt-1 ${darkMode ? "text-green-200" : "text-green-700"}`}>~70% of specialty visa filings</p>
+          <p className={`text-sm mt-1 ${darkMode ? "text-green-200" : "text-green-700"}`}>97.7% of these 4 visa-class rows</p>
         </div>
       </div>
 
@@ -557,37 +557,37 @@ function StatisticsDashboard({ darkMode = false }) {
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>120-210 days</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>P10-P90: 4-7 days (avg 11.3)</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-3/4 bg-gradient-to-r from-lagoon to-cyan-400 rounded-full"></div>
+              <div className="h-full w-2/5 bg-gradient-to-r from-lagoon to-cyan-400 rounded-full"></div>
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>E-3 Australian</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>90-150 days</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>P10-P90: 4-7 days (avg 10.9)</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-3/5 bg-gradient-to-r from-sunrise to-orange-400 rounded-full"></div>
+              <div className="h-full w-2/5 bg-gradient-to-r from-sunrise to-orange-400 rounded-full"></div>
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B1 Singapore</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>60-120 days</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>P10-P90: 4-7 days (avg 14.1)</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full w-1/2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+              <div className="h-full w-2/5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1">
               <span className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-slate-700"}`}>H-1B1 Chile</span>
-              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>60-120 days</span>
+              <span className={`text-sm ${darkMode ? "text-slate-400" : "text-slate-600"}`}>P10-P90: 4-7 days (avg 8.9)</span>
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div className="h-full w-2/5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full"></div>
