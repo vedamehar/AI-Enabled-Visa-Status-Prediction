@@ -33,6 +33,15 @@ const dayOptions = [
   { value: 6, label: "Sunday" },
 ];
 
+const nationalityOptions = [
+  { value: "", label: "Select your citizenship" },
+  { value: "United States", label: "United States" },
+  { value: "Australia", label: "Australia" },
+  { value: "Singapore", label: "Singapore" },
+  { value: "Chile", label: "Chile" },
+  { value: "Other Foreign National", label: "Other Foreign National" },
+];
+
 const caseStatusOptions = [
   { value: "CERTIFIED", label: "Approved" },
   { value: "DENIED", label: "Not Approved" },
@@ -745,6 +754,7 @@ function App() {
   const [guidance, setGuidance] = useState(null);
 
   const [formData, setFormData] = useState({
+    nationality: "",
     case_status: "",
     submission_month: "",
     submission_quarter: "",
@@ -776,7 +786,9 @@ function App() {
   useEffect(() => {
     async function loadVisaTypes() {
       try {
-        const response = await fetch("/api/visa-types");
+        // Pass nationality as query parameter to filter visa types
+        const nationality = formData.nationality ? `?nationality=${encodeURIComponent(formData.nationality)}` : "";
+        const response = await fetch(`/api/visa-types${nationality}`);
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.error || "Unable to load visa types");
@@ -800,7 +812,7 @@ function App() {
     }
 
     loadVisaTypes();
-  }, []);
+  }, [formData.nationality]);
 
   useEffect(() => {
     if (!selectedVisaType) {
@@ -879,6 +891,7 @@ function App() {
     try {
       const payload = {
         visa_type: selectedVisaType,
+        nationality: formData.nationality,
         case_status: requiresLcaStatus ? formData.case_status : "CERTIFIED",
         submission_month: Number(formData.submission_month),
         submission_quarter: Number(formData.submission_quarter),
@@ -1182,6 +1195,21 @@ function App() {
                           <option key={type.visa_type} value={type.visa_type}>{type.visa_type}</option>
                         ))}
                       </select>
+                      {formData.nationality && selectedVisaType === 'E-3 Australian' && formData.nationality !== 'Australia' ? (
+                        <div className={`mt-2 rounded-lg border px-3 py-2 text-sm ${darkMode ? "border-red-800/50 bg-red-900/20 text-red-200" : "border-red-200 bg-red-50 text-red-800"}`}>
+                          ⚠️ <strong>Eligibility Issue:</strong> E-3 Australian visa is only available to Australian citizens. You selected {formData.nationality}.
+                        </div>
+                      ) : null}
+                      {formData.nationality && selectedVisaType === 'H-1B1 Singapore' && formData.nationality !== 'Singapore' ? (
+                        <div className={`mt-2 rounded-lg border px-3 py-2 text-sm ${darkMode ? "border-red-800/50 bg-red-900/20 text-red-200" : "border-red-200 bg-red-50 text-red-800"}`}>
+                          ⚠️ <strong>Eligibility Issue:</strong> H-1B1 Singapore visa is only available to Singapore citizens. You selected {formData.nationality}.
+                        </div>
+                      ) : null}
+                      {formData.nationality && selectedVisaType === 'H-1B1 Chile' && formData.nationality !== 'Chile' ? (
+                        <div className={`mt-2 rounded-lg border px-3 py-2 text-sm ${darkMode ? "border-red-800/50 bg-red-900/20 text-red-200" : "border-red-200 bg-red-50 text-red-800"}`}>
+                          ⚠️ <strong>Eligibility Issue:</strong> H-1B1 Chile visa is only available to Chilean citizens. You selected {formData.nationality}.
+                        </div>
+                      ) : null}
                       {visaTypes.length > 0 ? (
                         <p className={`text-base ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                           {visaTypes.find((item) => item.visa_type === selectedVisaType)?.summary || ""}
@@ -1239,6 +1267,26 @@ function App() {
                     </div>
                   ) : null}
                   <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+                    <div className="sm:col-span-2">
+                      <div className="mb-2 flex items-center gap-2">
+                        <label className={`block text-base font-medium ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Your Citizenship / Nationality</label>
+                        <span
+                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-semibold ${darkMode ? "border-slate-500 text-slate-300" : "border-slate-400 text-slate-600"}`}
+                          title="Select your citizenship to see visa options you're eligible for. E-3 is for Australians, H-1B1 Singapore for Singaporeans, H-1B1 Chile for Chileans. H-1B is open to all."
+                          aria-label="Nationality eligibility info"
+                        >
+                          i
+                        </span>
+                      </div>
+                      <select value={formData.nationality} onChange={(e) => updateField("nationality", e.target.value)} className={`w-full rounded-lg border px-3 py-2.5 text-base focus:border-lagoon focus:outline-none focus:ring-2 focus:ring-lagoon/20 ${darkMode ? "border-slate-600 bg-slate-800 text-slate-100" : "border-slate-300 bg-white"}`}>
+                        {nationalityOptions.map((nat) => (
+                          <option key={nat.value} value={nat.value}>{nat.label}</option>
+                        ))}
+                      </select>
+                      <p className={`mt-2 text-sm ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        Your citizenship determines which visa types you're eligible for. This ensures only relevant options are shown.
+                      </p>
+                    </div>
                     {requiresLcaStatus ? (
                     <div className="sm:col-span-2">
                       <div className="mb-2 flex items-center gap-2">
@@ -1310,7 +1358,7 @@ function App() {
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData({ case_status: "", submission_month: "", submission_quarter: "", submission_dayofweek: "", case_year: "" });
+                          setFormData({ nationality: "", case_status: "", submission_month: "", submission_quarter: "", submission_dayofweek: "", case_year: "" });
                           setPrediction(null);
                           setErrors({});
                           setApiError("");

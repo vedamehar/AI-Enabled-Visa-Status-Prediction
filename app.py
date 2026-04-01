@@ -327,6 +327,65 @@ def get_visa_guidance(visa_type):
 AVAILABLE_VISA_TYPES = load_visa_types_from_data()
 
 
+# Nationality-based eligibility requirements for visa types
+VISA_NATIONALITY_REQUIREMENTS = {
+    'H-1B': None,  # Open to all nationalities
+    'E-3 Australian': 'Australia',  # Australian citizens only
+    'H-1B1 Singapore': 'Singapore',  # Singapore citizens only
+    'H-1B1 Chile': 'Chile',  # Chilean citizens only
+}
+
+NATIONALITY_OPTIONS = [
+    'United States',
+    'Australia',
+    'Singapore', 
+    'Chile',
+    'Other Foreign National',
+]
+
+
+def filter_visa_types_by_nationality(visa_types, nationality):
+    """
+    Filter visa types based on applicant nationality.
+    Only returns visa types that the applicant is eligible for.
+    """
+    if not nationality:
+        return visa_types  # No filtering if nationality not provided
+    
+    eligible_visas = []
+    for visa in visa_types:
+        visa_name = visa if isinstance(visa, str) else visa.get('visa_type', str(visa))
+        required_nationality = VISA_NATIONALITY_REQUIREMENTS.get(visa_name)
+        
+        # If no nationality requirement, always eligible
+        if required_nationality is None:
+            eligible_visas.append(visa)
+        # If requirement exists, check if it matches
+        elif required_nationality == nationality:
+            eligible_visas.append(visa)
+    
+    return eligible_visas
+
+
+def get_ineligible_visas(visa_types, nationality):
+    """
+    Get visa types that applicant is NOT eligible for based on nationality.
+    Used for showing warnings.
+    """
+    if not nationality:
+        return []
+    
+    ineligible = []
+    for visa in visa_types:
+        visa_name = visa if isinstance(visa, str) else visa.get('visa_type', str(visa))
+        required_nationality = VISA_NATIONALITY_REQUIREMENTS.get(visa_name)
+        
+        if required_nationality is not None and required_nationality != nationality:
+            ineligible.append(visa_name)
+    
+    return ineligible
+
+
 # LCA is relevant for these specialty work-visa paths in current model scope.
 LCA_REQUIRED_VISA_TYPES = {'H-1B', 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'}
 
@@ -553,9 +612,16 @@ def app_page():
 
 @app.route('/api/visa-types', methods=['GET'])
 def api_visa_types():
-    """List visa types and whether prediction is currently ML-supported."""
+    """List visa types and whether prediction is currently ML-supported, filtered by nationality if provided."""
+    # Get nationality filter from query params
+    nationality = request.args.get('nationality', '').strip()
+    
+    # Filter available visa types by nationality if provided
+    filtered_visa_types = filter_visa_types_by_nationality(AVAILABLE_VISA_TYPES, nationality)
+    ineligible_visas = get_ineligible_visas(AVAILABLE_VISA_TYPES, nationality) if nationality else []
+    
     visa_types = []
-    for visa_type in AVAILABLE_VISA_TYPES:
+    for visa_type in filtered_visa_types:
         guidance = get_visa_guidance(visa_type)
         coverage = get_visa_prediction_coverage(visa_type)
         visa_types.append({
@@ -572,6 +638,9 @@ def api_visa_types():
     return jsonify({
         "visa_types": visa_types,
         "count": len(visa_types),
+        "nationality_filter": nationality if nationality else None,
+        "total_available": len(AVAILABLE_VISA_TYPES),
+        "ineligible_visas": ineligible_visas,
     })
 
 
@@ -616,6 +685,7 @@ def api_predict():
         submission_day = data.get('submission_day')
         submission_week = data.get('submission_week')
         visa_type = data.get('visa_type', 'H-1B')
+        nationality = data.get('nationality', '').strip()
         
         # Validate ranges
         if not (1 <= submission_month <= 12):
@@ -632,6 +702,17 @@ def api_predict():
             return jsonify({"error": "submission_week must be between 1 and 53"}), 400
         if visa_type not in AVAILABLE_VISA_TYPES:
             return jsonify({"error": f"Invalid visa_type. Must be one of: {', '.join(AVAILABLE_VISA_TYPES)}"}), 400
+        
+        # Check nationality eligibility for visa type
+        if nationality:
+            required_nationality = VISA_NATIONALITY_REQUIREMENTS.get(visa_type)
+            if required_nationality and required_nationality != nationality:
+                return jsonify({
+                    "error": f"You are not eligible for {visa_type}. This visa is only available to {required_nationality} citizens.",
+                    "eligible_for_nationality": required_nationality,
+                    "your_nationality": nationality,
+                    "prediction_enabled": False
+                }), 403
 
         coverage = get_visa_prediction_coverage(visa_type)
 
@@ -687,6 +768,7 @@ def api_predict():
         return jsonify({
             "success": True,
             "visa_type": visa_type,
+            "nationality": nationality if nationality else None,
             "prediction": result,
             "prediction_supported": guidance["prediction_supported"],
             "model_source": model_source,
