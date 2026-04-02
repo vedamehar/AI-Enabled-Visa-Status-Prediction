@@ -378,7 +378,9 @@ These checkpoint names are kept here as training-stage references for review his
 | Random Forest | 4.5179 | 22.5553 | 0.5473 | Best in baseline-only comparison |
 | Gradient Boosting | 4.7443 | 22.6361 | 0.5441 | Good but slower |
 
-Random Forest was strongest in baseline-only testing, while tuned XGBoost is the best overall and production model.
+Random Forest was strongest in baseline-only testing based on the baseline metrics table, while tuned XGBoost is the best overall and production model based on the XGBoost accuracy results.
+
+**Metric clarification:** the baseline table uses MAE, RMSE, and R². The ~0.55 value is the Random Forest R² score, not accuracy. The 66.67% and 66.69% values are XGBoost accuracy scores from the fixed and tuned checkpoints.
 
 ### Key Insight:
 Single model trained on all visa types (H-1B, E-3, etc.) achieves ~MAE 4.52.  
@@ -414,7 +416,7 @@ For documentation consistency: the standalone fixed-parameter checkpoint `visa_p
 - Random Forest (MAE: 4.52, R²: 0.55) ⭐ **Best Baseline**
 - Gradient Boosting (MAE: 4.74, R²: 0.54)
 
-**Important:** Best baseline does not mean best overall. The best overall/production performer is tuned XGBoost.
+**Important:** Best baseline does not mean best overall. The baseline comparison table is showing regression metrics, while the best overall/production performer is tuned XGBoost with 66.69% accuracy.
 
 **Limitation:** Single model trained across all visa types (H-1B, E-3, H-1B1, etc.) dilutes prediction accuracy due to visa-specific processing patterns.
 
@@ -729,9 +731,11 @@ The `documentation/` folder contains supporting project documentation and planni
 
 Current file included in the repository:
 
-- `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx`
+- `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx.xls`
 
-Note: the workspace currently shows the file as `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx.xls`; the README line above is preserved for the original project naming.
+Note: the workspace filename includes the extra `.xls` suffix, so this line now matches the actual file on disk.
+
+Note: the earlier project naming is preserved in the surrounding documentation context.
 
 ---
 
