@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="320" viewBox="0 0 700 320" fill="none">
+  <rect width="700" height="320" rx="24" fill="#F8FAFC"/>
+  <rect x="42" y="36" width="616" height="248" rx="18" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+  <path d="M72 215C138 194 180 155 234 146C281 138 326 165 376 132C423 101 468 103 518 121C561 136 596 169 630 178" stroke="#0369A1" stroke-width="6" stroke-linecap="round"/>
+  <line x1="72" y1="222" x2="630" y2="222" stroke="#CBD5E1" stroke-width="2"/>
+  <circle cx="234" cy="146" r="8" fill="#0EA5E9"/>
+  <circle cx="376" cy="132" r="10" fill="#FB923C"/>
+  <circle cx="518" cy="121" r="8" fill="#0EA5E9"/>
+  <rect x="90" y="80" width="140" height="10" rx="5" fill="#CBD5E1"/>
+  <rect x="90" y="98" width="84" height="8" rx="4" fill="#E2E8F0"/>
+  <rect x="515" y="70" width="110" height="34" rx="10" fill="#FFEDD5"/>
+  <text x="530" y="92" fill="#9A3412" font-family="Arial, sans-serif" font-size="14" font-weight="700">Prediction</text>
+</svg>

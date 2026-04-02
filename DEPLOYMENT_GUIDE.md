@@ -13,8 +13,14 @@ archive/
 |   `-- index.html
 |-- static/
 |   |-- style.css
-|   |-- react-app.js
-|   `-- script.js
+|   `-- react-app.js
+|-- outputs/
+|   `-- visuals/
+|       |-- 01_processing_time_distribution.png
+|       |-- ...
+|       |-- 12_h1b_state_processing_exclusive.png
+|       |-- result-visual.svg
+|       `-- visa-hero.svg
 `-- models/
     |-- visa_ensemble_model.pkl
     |-- visa_encoders.pkl

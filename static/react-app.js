@@ -53,8 +53,8 @@ const purposeOptions = [
   { value: "work", label: "Specialty occupation work in the U.S." },
 ];
 
-const heroImageSrc = "/static/images/visa-hero.svg";
-const resultImageSrc = "/static/images/result-visual.svg";
+const heroImageSrc = "/outputs/visuals/visa-hero.svg";
+const resultImageSrc = "/outputs/visuals/result-visual.svg";
 
 // FAQ Data
 const faqItems = [

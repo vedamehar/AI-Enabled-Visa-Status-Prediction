@@ -3,7 +3,7 @@ AI Enabled Visa Status Prediction & Processing Time Estimator
 Flask Web Application
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import joblib
 import pandas as pd
 import numpy as np
@@ -28,6 +28,7 @@ app.json_encoder = NumpyEncoder
 
 # Load the trained models
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
+OUTPUTS_DIR = os.path.join(os.path.dirname(__file__), 'outputs')
 
 
 def safe_joblib_load(path, label=None, required=True):
@@ -607,6 +608,19 @@ def index():
 def app_page():
     """Render the main application page"""
     return render_template('index.html')
+
+
+@app.route('/outputs/<path:filename>')
+def serve_outputs_file(filename):
+    """Serve reviewer assets from outputs directory."""
+    return send_from_directory(OUTPUTS_DIR, filename)
+
+
+@app.route('/outputs/visuals/<path:filename>')
+def serve_visuals_file(filename):
+    """Serve visual assets from outputs/visuals."""
+    visuals_dir = os.path.join(OUTPUTS_DIR, 'visuals')
+    return send_from_directory(visuals_dir, filename)
 
 
 @app.route('/api/visa-types', methods=['GET'])
