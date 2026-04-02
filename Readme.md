@@ -357,7 +357,9 @@ To avoid confusion during review, this project includes two XGBoost variants fro
    - R²: 0.67
    - Accuracy: 66.69%
 
-**App behavior:** `app.py` prioritizes `visa_processing_model_xgb_tuned.pkl` when available.
+These checkpoint names are kept here as training-stage references for review history. The current runtime stack uses the XGBoost-based artifacts loaded by `app.py` from the active model set.
+
+**App behavior:** `app.py` prioritizes the tuned XGBoost path when that checkpoint is present; otherwise it falls back to the active production XGBoost stack.
 
 ### Evaluation Metrics:
 
@@ -656,7 +658,7 @@ http://localhost:5000
 
 1. Ensure `requirements.txt` is present
 2. Flask app runs on port defined by `PORT` env variable
-3. All model files must be included in deployment
+3. All required model files must be included in deployment
 4. Model files are loaded at startup (slight delay OK)
 
 **Deployment Files:**
@@ -679,10 +681,10 @@ http://localhost:5000
 | Gradient Boosting | 4.7443 | 22.6361 | 0.5441 |
 
 ### Production Model (Current App):
-- Tuned XGBoost checkpoint: `models/visa_processing_model_xgb_tuned.pkl`
+- Tuned XGBoost checkpoint (historical training artifact): `models/visa_processing_model_xgb_tuned.pkl`
 - App-level model routing in `app.py` prioritizes tuned XGBoost and visa-specific/ensemble XGBoost artifacts when available.
 - Latest tuned checkpoint metrics: **MAE 0.37**, **RMSE 1.91**, **R² 0.67**, **Accuracy 66.69%**
-- Alternate standalone checkpoint (for comparison): `visa_processing_model_xgb.pkl` with shared-run metrics **MAE 0.35**, **RMSE 1.91**, **R² 0.67**, **Accuracy 66.67%**
+- Alternate standalone checkpoint (historical comparison artifact): `visa_processing_model_xgb.pkl` with shared-run metrics **MAE 0.35**, **RMSE 1.91**, **R² 0.67**, **Accuracy 66.67%**
 
 ### Multi-Model Improvement:
 - Baseline single-model (historical RF baseline reference): **MAE 4.52**, **R² 0.55**
@@ -728,6 +730,8 @@ The `documentation/` folder contains supporting project documentation and planni
 Current file included in the repository:
 
 - `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx`
+
+Note: the workspace currently shows the file as `documentation/Vedant_Mehar_Agile_Template_v0.1 .xlsx.xls`; the README line above is preserved for the original project naming.
 
 ---
 
