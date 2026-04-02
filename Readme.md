@@ -10,6 +10,9 @@ This project develops a predictive analytics system that estimates visa processi
 By analyzing temporal patterns, case status, and structural attributes, the system provides data-driven estimates to improve transparency and applicant experience.
 
 ---
+## 🌐 Live Application
+
+**🔗 Website's URL:** [https://veda-visa-ai.onrender.com/](https://veda-visa-ai.onrender.com/)
 
 ##  Download Datasets
 
