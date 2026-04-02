@@ -1,219 +1,230 @@
-# Flask UI Setup & Running Guide
+# Flask App Setup, Run, and Deployment Guide
 
-## 📋 Project Structure
-```
+## 1. Current Project Structure
+
+```text
 archive/
-├── app.py                          # Flask backend application
-├── requirements.txt                # Python dependencies
-├── templates/
-│   └── index.html                 # HTML template
-├── static/
-│   ├── style.css                  # CSS styling
-│   └── script.js                  # JavaScript frontend logic
-└── models/
-    └── visa_processing_model.pkl  # Trained ML model
+|-- app.py
+|-- requirements.txt
+|-- Procfile
+|-- render.yaml
+|-- templates/
+|   |-- landing.html
+|   `-- index.html
+|-- static/
+|   |-- style.css
+|   |-- react-app.js
+|   `-- script.js
+`-- models/
+    |-- visa_ensemble_model.pkl
+    |-- visa_encoders.pkl
+    |-- training_metadata.pkl
+    |-- visa_model_H_1B.pkl
+    |-- visa_model_E_3_Australian.pkl
+    |-- visa_model_H_1B1_Singapore.pkl
+    |-- visa_model_H_1B1_Chile.pkl
+    `-- visa_processing_model.pkl  (legacy fallback)
 ```
 
----
+## 2. Quick Start (Local)
 
-## 🚀 Quick Start
+### Step 1: Open the project directory
 
-### Step 1: Install Dependencies
 ```powershell
 cd C:\Users\vedam\Downloads\archive
+```
+
+### Step 2: Activate virtual environment
+
+```powershell
+& .\.venv\Scripts\Activate.ps1
+```
+
+### Step 3: Install dependencies
+
+```powershell
 pip install -r requirements.txt
 ```
 
-### Step 2: Run the Application
+### Step 4: Run the Flask app
+
 ```powershell
 python app.py
 ```
 
-### Step 3: Open in Browser
-Navigate to:
-```
-http://127.0.0.1:5000
-```
+### Step 5: Open in browser
 
----
+- Landing page: http://127.0.0.1:5000/
+- Main app page: http://127.0.0.1:5000/app
 
-## 🎯 Features
+## 3. Runtime Behavior (Important)
 
-✅ **Clean, Modern UI** - Professional web interface with gradient design  
-✅ **Easy Input Form** - Dropdowns for all visa parameters  
-✅ **Real-time Predictions** - Instant ML model predictions  
-✅ **Confidence Intervals** - Shows range of expected processing days  
-✅ **Responsive Design** - Works on desktop, tablet, and mobile  
-✅ **Error Handling** - Validates inputs and shows helpful error messages  
-✅ **Loading States** - Visual feedback during predictions  
+- App binds to host 0.0.0.0.
+- Port comes from environment variable PORT (defaults to 5000).
+- Debug mode is controlled by FLASK_DEBUG=1.
+- Preferred inference path is multi-visa ensemble + visa-specific models.
+- Legacy single-model fallback exists via visa_processing_model.pkl when ensemble artifacts are unavailable.
 
----
+## 4. Supported Inputs for Prediction
 
-## 📊 Input Parameters
+Required fields for POST /api/predict:
 
-| Parameter | Type | Valid Values | Description |
-|-----------|------|--------------|-------------|
-| Case Status | Dropdown | CERTIFIED, DENIED, WITHDRAWN, PENDING_REVIEW | Visa application status |
-| Submission Month | Dropdown | 1-12 | Month case was submitted |
-| Submission Quarter | Dropdown | 1-4 | Quarter of submission |
-| Day of Week | Dropdown | 0-6 (Mon-Sun) | Day of week submitted |
-| Case Year | Dropdown | 2015-2025 | Year case was submitted |
+- case_status: CERTIFIED | DENIED | WITHDRAWN | PENDING_REVIEW
+- submission_month: 1-12
+- submission_quarter: 1-4
+- submission_dayofweek: 0-6
+- case_year: 2015-current_year
+- visa_type: must be one of values returned by GET /api/visa-types
 
----
+Optional fields:
 
-## 📈 Output
+- nationality: used for eligibility filtering (United States, Australia, Singapore, Chile)
+- submission_day: 1-31
+- submission_week: 1-53
 
-The prediction returns:
-- **Estimated Processing Time** (in days)
-- **Expected Range** (e.g., 20 - 30 days with 95% confidence)
-- **Confidence Margin** (±4.47 days based on model MAE)
+## 5. API Endpoints (Current)
 
----
+### GET /
 
-## 🔧 Troubleshooting
+Returns landing.html.
 
-### Issue: "Module not found" errors
-**Solution:** Ensure all dependencies are installed:
-```powershell
-pip install -r requirements.txt
-```
+### GET /app
 
-### Issue: "Model not found" error
-**Solution:** Ensure `visa_processing_model.pkl` exists in the `models/` folder
+Returns index.html (main UI).
 
-### Issue: Port 5000 already in use
-**Solution:** Modify the port in `app.py`:
-```python
-app.run(debug=True, host='127.0.0.1', port=5001)  # Change to 5001
+### GET /api/visa-types
+
+Returns available visa types, support metadata, and optional nationality filtering.
+
+Example:
+
+```http
+GET /api/visa-types?nationality=Australia
 ```
 
-### Issue: Cannot access http://127.0.0.1:5000
-**Solution:** Check if the Flask app is running (look for "Running on" message in terminal)
+### GET /api/visa-guidance
 
----
+Returns visa summary, eligibility list, document checklist, and model coverage.
 
-## 🌐 API Endpoints
+Example:
 
-### GET `/`
-Returns the main HTML page
+```http
+GET /api/visa-guidance?visa_type=E-3%20Australian
+```
 
-### POST `/api/predict`
-Make a prediction with JSON payload:
+### POST /api/predict
+
+Predicts processing days with rounded values and raw values.
+
+Sample request:
+
 ```json
 {
   "case_status": "CERTIFIED",
   "submission_month": 6,
   "submission_quarter": 2,
   "submission_dayofweek": 2,
-  "case_year": 2018
+  "case_year": 2024,
+  "visa_type": "H-1B",
+  "nationality": "United States"
 }
 ```
 
-Response:
+Sample response:
+
 ```json
 {
   "success": true,
+  "visa_type": "H-1B",
   "prediction": {
-    "predicted_days": 45.23,
-    "range_min": 40.76,
-    "range_max": 49.7,
-    "confidence_margin": 4.47
+    "predicted_days": 12,
+    "range_min": 9,
+    "range_max": 15,
+    "confidence_margin": 3,
+    "raw_predicted_days": 11.62,
+    "raw_range_min": 8.67,
+    "raw_range_max": 14.57,
+    "raw_confidence_margin": 2.95,
+    "model_source": "visa_specific",
+    "confidence_level": "high",
+    "mapped_fallback": false,
+    "effective_visa_class": "H-1B"
   }
 }
 ```
 
-### GET `/api/info`
-Get application information and valid values:
-```json
-{
-  "app_name": "H-1B Visa Processing Time Estimator",
-  "version": "1.0",
-  "case_statuses": ["CERTIFIED", "DENIED", "WITHDRAWN", "PENDING_REVIEW"],
-  "months": [1, 2, ..., 12],
-  "quarters": [1, 2, 3, 4],
-  "days_of_week": {...},
-  "year_range": {"min": 2015, "max": 2026}
-}
+### POST /api/prediction-context
+
+Returns dataset-driven contextual insights for charts.
+
+### GET /api/info
+
+Returns app metadata, valid values, active model file, and optional-field support.
+
+## 6. Troubleshooting
+
+### Issue: dependency import errors
+
+```powershell
+pip install -r requirements.txt
 ```
 
----
+### Issue: model artifact load failure or version mismatch
 
-## 🎨 Customization
+- Error often indicates incompatible joblib/scikit-learn/numpy versions.
+- Rebuild artifacts in the current environment and redeploy.
+- Keep runtime versions aligned with requirements.txt.
 
-### Change Colors
-Edit `static/style.css` - Look for `:root` CSS variables:
-```css
-:root {
-    --primary-color: #2c3e50;        /* Dark blue */
-    --secondary-color: #3498db;      /* Light blue */
-    --accent-color: #e74c3c;         /* Red */
-}
+### Issue: "No trained model found in models directory"
+
+Ensure at least one of these is available:
+
+- Preferred: visa_ensemble_model.pkl + visa_encoders.pkl
+- Fallback: visa_processing_model.pkl
+
+### Issue: port already in use
+
+```powershell
+$env:PORT = 5001
+python app.py
 ```
 
-### Change Header Text
-Edit `templates/index.html`:
-```html
-<h1>🎓 Your Custom Header Text</h1>
+### Issue: /api/predict returns eligibility error
+
+- nationality must match visa restrictions for E-3 and H-1B1 variants.
+- For H-1B, use United States in current app logic.
+
+## 7. Zero-Cost Deployment (Render)
+
+This repository is configured for Render using:
+
+- render.yaml
+- Procfile
+- gunicorn in requirements.txt
+
+### Steps
+
+1. Push code to GitHub (avoid large dataset files).
+2. In Render, click New + and choose Blueprint.
+3. Select repository; Render auto-detects render.yaml.
+4. Create service and wait for first build.
+5. Open deployed URL.
+
+### Free-tier notes
+
+- Service sleeps when idle.
+- First request after sleep can take 30-90 seconds.
+- Keep repository size lean for faster deploys.
+
+## 8. Optional Manual Production Run
+
+```powershell
+gunicorn app:app
 ```
 
-### Adjust Model Confidence
-Edit `app.py` - Change the `MAE` constant (currently 4.47):
-```python
-MAE = 5.0  # Adjust uncertainty margin
-```
+## 9. Maintenance Checklist
 
----
-
-## 🚀 Deployment (Zero Cost)
-
-### Recommended: Render Free Web Service (No Cost)
-
-This project is now deployment-ready for Render using:
-- `Procfile`
-- `render.yaml`
-- `gunicorn` in `requirements.txt`
-
-#### Step-by-step:
-
-1. Push your code to GitHub (without huge datasets).
-2. Go to Render Dashboard and sign in with GitHub.
-3. Click **New +** → **Blueprint**.
-4. Select your repository.
-5. Render will detect `render.yaml` automatically.
-6. Confirm service creation and wait for first build.
-7. Open the generated URL (for example: `https://visa-status-predictor.onrender.com`).
-
-#### Important free-tier notes:
-
-- Free web services sleep after inactivity.
-- First request after sleep can take 30-90 seconds (cold start).
-- Keep total slug/repo size lightweight; do not push large CSV/ZIP files.
-
----
-
-### Alternative: PythonAnywhere Free Tier
-
-1. Create a free account.
-2. Upload code and model files.
-3. Create a Flask web app.
-4. Set WSGI entry point to `app:app`.
-
-This is also zero-cost, but Render is typically simpler for GitHub auto-deploy.
-
----
-
-## 📝 Notes
-
-- The model expects specific input format and categorical encoding
-- Predictions are based on historical H-1B data (2015-2026)
-- Actual processing times may vary based on external factors
-- The confidence margin (±4.47 days) is the Mean Absolute Error of the training model
-
----
-
-## 📧 Support
-
-For issues or questions, check:
-- Terminal logs for error messages
-- Browser console (Press F12) for frontend errors
-- Ensure model file path is correct in `app.py`
+- Keep models/ artifacts in sync with app.py loading logic.
+- After retraining, update training_metadata.pkl and encoder artifacts.
+- Verify /api/info and /api/visa-types after each model refresh.
+- Re-test prediction + context endpoints before release.
