@@ -739,9 +739,10 @@ Note: the earlier project naming is preserved in the surrounding documentation c
 
 ---
 
-# 👨‍💻 Author
 
-Vedant N. Mehar  
-B.Tech – Information Technology
-AI Enabled Visa Status Prediction & Processing Time Estimator
-Infosys Springboard Intern
+## 👨‍💻 Author
+
+**Vedant N. Mehar**  
+🎓 B.Tech – Information Technology  
+🤖 AI Enabled Visa Status Prediction & Processing Time Estimator  
+🏢 Infosys Springboard Intern
